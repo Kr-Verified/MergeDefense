@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>merge</title>
+  <style>
+    #start {
+      border: 2px solid blue;
+      transition: 0.5s;
+      margin-top: 7%;
+      height: 75vh;
+      width: 50vw;
+      border-radius: 50px;
+      background-color: rgb(237, 237, 237);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    #start:hover {
+      transform: scale(1.1);
+      background-color: rgb(243, 243, 243);
+    }
+
+    #start-btn {
+      border: 2px solid blue;
+      transition: 0.5s;
+      height: 20%;
+      width: 80%;
+      border-radius: 50px;
+      background-color: greenyellow;
+      font-size: 50px;
+      font-weight: bold;
+    }
+    #start-btn:hover {
+      transform: scale(1.1);
+      background-color: aquamarine;
+    }
+  </style>
+</head>
+<body style="display: flex; justify-content: center;">
+  <div id="start">
+    <p style="font-size: 100px; text-align: center;">Merge</p>
+    <button id="start-btn" onclick="window.location.href = 'main.html'">start</button>
+  </div>
+</body>
+</html>

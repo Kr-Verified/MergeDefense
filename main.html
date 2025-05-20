@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-board">
+    <p id="coin-bar">0 $</p>
+    <div id="defense">
+      <p id="health" style="color:red; margin-bottom: 10px;">1000 Hp</p>
+    </div>
+  </div>
+  <div id="create-bar">
+    <div id="btn-bar">
+      <button id="create-btn" onclick="spawnTower()" class="btn"><span style="position: relative; top:10%">생성</span><span style="font-size: 30%; position: relative; top:-20%" id="spawnLv">1</span></button>
+      <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

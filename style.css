@@ -1,0 +1,86 @@
+body {
+  margin: 0; overflow: hidden; background-color: #f0f0f0;
+  overflow-y: hidden;
+}
+#game-board {
+  width: 100vw;
+  height: 80vh;
+}
+#defense {
+  background-image: url("./defense.png");
+  position: relative;
+  top: 35vh;
+  left: 20px;
+  width: 60px;
+  height: 80px;
+  background-size: 60px;
+}
+#create-bar {
+  height: 50vh;
+  border-top: 5px solid black;
+  border-radius: 20px;
+  transition: 0.5s;
+  padding: 10px 50px 10px 50px;
+  background-color: white;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  overflow-y: scroll;
+}
+#create-bar:hover {
+  transform: scale(1.05);
+  top:-30vh;
+}
+.tower {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  z-index: 1;
+  margin: 20px 2px 2px 2px;
+}
+
+.btn {
+  transition: 0.5s;
+  border-radius: 20px;
+  width: 10%;
+  height: 100%;
+  z-index: 2;
+}
+
+#create-btn {
+  background-color: aqua;
+  font-size:400%;
+}
+.btn:hover {
+  transform: scale(1.05);
+}
+#upgrade-create-btn {
+  background-color: aquamarine;
+  font-size:125%;
+}
+
+#btn-bar {
+  height: 33%;
+  width: 100%;
+  display: flex;
+}
+
+.bullet {
+  position: absolute;
+  z-index: 5;
+}
+
+#coin-bar {
+  position: absolute;
+  left: 47vw;
+  color: gold;
+  font-weight: bolder;
+  font-size: 300%;
+  margin-top: 0;
+  text-shadow: 0 0 10px black;
+}
