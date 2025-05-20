@@ -8,14 +8,15 @@
 </head>
 <body>
   <div id="game-board">
-    <p id="coin-bar">0 $</p>
+    <p id="name">Guest</p>
+    <p id="coin-bar">3 $</p>
     <div id="defense">
       <p id="health" style="color:red; margin-bottom: 10px;">1000 Hp</p>
     </div>
   </div>
   <div id="create-bar">
     <div id="btn-bar">
-      <button id="create-btn" onclick="spawnTower()" class="btn"><span style="position: relative; top:10%">생성</span><span style="font-size: 30%; position: relative; top:-20%" id="spawnLv">1</span></button>
+      <button id="create-btn" onclick="spawnBtn()" class="btn"><p style="margin-bottom: 0;" id="spawnLv">1 생성</p><span style="font-size: 50%; position: relative; top:-10%" id="price">1 $</span></button>
       <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
     </div>
   </div>

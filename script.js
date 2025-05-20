@@ -1,16 +1,17 @@
 let towerId = 0;
 let enemyId = 0;
-let coins = 0;
+let coins = 3;
 let spawnLv = 1;
 const board = document.getElementById('game-board');
 const createBar = document.getElementById('create-bar');
 const coinBar = document.getElementById('coin-bar');
 const upgradeBtn = document.getElementById('upgrade-create-btn');
 const spawnLvExpress = document.getElementById('spawnLv');
+const priceBar = document.getElementById('price');
 let draggedTower = null;
-let spawning = false;
 let health = 1000;
 const enemies = [];
+document.getElementById('name').textContent = `${localStorage.getItem('name')}`;
 
 function createTower(lv) {
   return {
@@ -21,10 +22,12 @@ function createTower(lv) {
 }
 
 function createEnemy(lv) {
+  let hp = lv*lv*100;
+  if (lv%5==0) hp*=lv; 
   return {
     id: enemyId++,
     lv: lv,
-    hp: lv*lv*100,
+    hp: hp,
     element: null
   }
 }
@@ -36,7 +39,9 @@ function spawnEnemy() {
   div.className = 'enemy';
   div.style.display = 'flex';
   div.style.flexDirection = 'column';
-  div.innerHTML = `<p style="margin:0; color:red;">${enemy.lv} Lv</p><img src="./enemyImg/${enemy.lv}.png" width=100px></img><p style="color:red;">${enemy.hp} Hp</p>`
+  let size = 100;
+  if (parseInt(enemy.lv)%5==0) size = 150;
+  div.innerHTML = `<p style="margin:0; color:red;">${enemy.lv} Lv</p><img src="./enemyImg/${enemy.lv}.png" width=${size}px></img><p style="color:red;">${enemy.hp} Hp</p>`
   div.draggable = true;
   enemy.element = div;
   div.style.position = 'absolute';
@@ -74,6 +79,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       document.getElementById('health').innerHTML = `<p style="color:red; margin-bottom:10px;">${health} Hp</p>`;
     }else {
     // 방향 벡터 단위화 후 이동
+    if (parseInt(enemyDiv.dataset.lv)==4) speed = 2.3;
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
 
@@ -83,13 +89,9 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
   }, 16);
 }
 
-const spawnTime = 2500-enemyId;
-if (spawnTime>250) setInterval(spawnEnemy, spawnTime);
-else setInterval(spawnEnemy, 200);
+setInterval(spawnEnemy, 2500);
 
-function spawnTower(lv=spawnLv) {
-  if (spawning) return;
-  spawning = true;
+function spawnTower(lv) {
   const tower = createTower(lv);
   const div = document.createElement('div');
   div.className = 'tower';
@@ -104,7 +106,15 @@ function spawnTower(lv=spawnLv) {
 
   createBar.appendChild(div);
   makeDraggable(div);
-  setTimeout(() => {spawning=false;}, 500);
+}
+
+function spawnBtn() {
+  const cost = spawnLv*spawnLv;
+  if (coins>=cost) {
+    coins-=cost;
+    coinBar.textContent = `${coins} $`;
+    spawnTower(spawnLv);
+  }
 }
 
 function makeDraggable(elem) {
@@ -262,12 +272,13 @@ setInterval(towerAttackLoop, 1000);
 
 
 function upgradeCreate() {
-  const cost = spawnLv*spawnLv*spawnLv*5;
+  const cost = Math.pow(spawnLv, 4)*5;
   if ( coins >= cost ) {
     coins -= cost;
     spawnLv += 1;
     coinBar.textContent = `${coins} $`;
-    upgradeBtn.textContent = `생성 단계 향상 ${spawnLv*spawnLv*spawnLv*5} $`;
-    spawnLvExpress.textContent = `${spawnLv}`;
+    upgradeBtn.textContent = `생성 단계 향상 ${Math.pow(spawnLv, 4)*5} $`;
+    spawnLvExpress.textContent = `${spawnLv} 생성`;
+    priceBar.textContent = `${spawnLv*spawnLv} $`
   }
 }
