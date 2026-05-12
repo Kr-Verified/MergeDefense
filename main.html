@@ -18,6 +18,28 @@
     <div id="btn-bar">
       <button id="create-btn" onclick="spawnBtn()" class="btn"><p style="margin-bottom: 0;" id="spawnLv">1 생성</p><span style="font-size: 50%; position: relative; top:-10%" id="price">1 $</span></button>
       <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
+      <button id="global-speed-btn" type="button" class="btn global-upgrade-btn">전체 속도 향상</button>
+      <button id="global-power-btn" type="button" class="btn global-upgrade-btn">전체 힘 향상</button>
+      <button id="global-range-btn" type="button" class="btn global-upgrade-btn">전체 범위 향상</button>
+      <button id="castle-health-btn" type="button" class="btn castle-upgrade-btn">성 체력 향상</button>
+    </div>
+  </div>
+  <div id="upgrade-modal" class="modal hidden">
+    <div class="modal-panel">
+      <button id="close-upgrade-modal" class="modal-close" type="button">x</button>
+      <h2 id="upgrade-title">타워 업그레이드</h2>
+      <div class="tower-stats">
+        <p id="tower-level">Lv 1</p>
+        <p id="tower-star">1성</p>
+        <p id="tower-damage">공격 힘: 10</p>
+        <p id="tower-speed">공격 속도: 1.00초</p>
+        <p id="tower-range">공격 범위: 400</p>
+      </div>
+      <div class="upgrade-actions">
+        <button id="upgrade-speed-btn" type="button">공격 속도 향상</button>
+        <button id="upgrade-power-btn" type="button">공격 힘 향상</button>
+        <button id="upgrade-range-btn" type="button">공격 범위 향상</button>
+      </div>
     </div>
   </div>
   <script src="script.js"></script>

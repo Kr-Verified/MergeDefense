@@ -1,75 +1,217 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
-  margin: 0; overflow: hidden; background-color: #454e7f;
-  overflow-y: hidden;
+  margin: 0;
+  overflow: hidden;
+  color: #eef4ff;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 214, 102, 0.16), transparent 28%),
+    radial-gradient(circle at 86% 8%, rgba(89, 209, 197, 0.16), transparent 24%),
+    linear-gradient(160deg, #18203f 0%, #343c6b 52%, #241c38 100%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
 #game-board {
+  position: relative;
   width: 100vw;
-  height: 80vh;
+  height: 70vh;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
+
 #defense {
-  background-image: url("./defense.png");
   position: relative;
   top: 35vh;
   left: 20px;
-  width: 60px;
-  height: 80px;
-  background-size: 60px;
+  width: 70px;
+  height: 92px;
+  background-image: url("./defense.png");
+  background-size: contain;
+  background-repeat: no-repeat;
 }
+
+#health {
+  position: absolute;
+  top: -34px;
+  left: -8px;
+  min-width: 92px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 100, 100, 0.35);
+  border-radius: 8px;
+  color: #ff7373;
+  background-color: rgba(16, 20, 38, 0.72);
+  text-align: center;
+  font-weight: 800;
+}
+
 #create-bar {
-  height: 50vh;
-  border-top: 5px solid rgba(0, 94, 255, 0.75);
-  border-radius: 20px;
-  transition: 0.5s;
-  padding: 10px 50px 10px 50px;
-  background-color: rgba(0, 0, 0, 0.5);
   position: relative;
+  height: 30vh;
+  padding: 14px 28px;
+  border-top: 2px solid rgba(255, 215, 0, 0.42);
+  background:
+    linear-gradient(180deg, rgba(14, 19, 38, 0.92), rgba(10, 12, 24, 0.96)),
+    linear-gradient(90deg, rgba(255, 215, 0, 0.12), rgba(89, 209, 197, 0.12));
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  overflow-y: scroll;
-}
-#create-bar:hover {
-  transform: scale(1.05);
-  top:-30vh;
-}
-.tower {
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  user-select: none;
-  z-index: 1;
-  margin: 20px 2px 2px 2px;
-}
-
-.btn {
-  transition: 0.5s;
-  border-radius: 20px;
-  width: 10%;
-  height: 100%;
-  z-index: 2;
-  color:rgba(255, 255, 255, 0.9);
-}
-
-#create-btn {
-  background-color: rgb(0, 38, 255);
-  font-size:200%;
-  font-weight: 900;
-}
-.btn:hover {
-  transform: scale(1.05);
-}
-#upgrade-create-btn {
-  background-color: rgb(0, 128, 255);
-  font-size:125%;
+  gap: 10px;
+  overflow-y: auto;
 }
 
 #btn-bar {
-  height: 33%;
   width: 100%;
+  min-height: 72px;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.btn {
+  flex: 1 1 150px;
+  min-width: 150px;
+  height: 66px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+#create-btn {
+  background: linear-gradient(135deg, #2b64ff, #18a0fb);
+  font-size: 26px;
+}
+
+#upgrade-create-btn {
+  background: linear-gradient(135deg, #00a6a6, #26b86c);
+  font-size: 16px;
+}
+
+.global-upgrade-btn {
+  background: linear-gradient(135deg, #5b6cff, #c061cb);
+  font-size: 14px;
+}
+
+.castle-upgrade-btn {
+  background: linear-gradient(135deg, #d94848, #f59f00);
+  font-size: 14px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tower {
+  position: relative;
+  width: 86px;
+  height: 102px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(12, 16, 31, 0.42);
+  cursor: grab;
+  user-select: none;
+  z-index: 1;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.tower:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.tower.installed {
+  background: transparent;
+  border-color: transparent;
+}
+
+.tower.installed:hover {
+  outline: 2px solid rgba(255, 215, 0, 0.92);
+  outline-offset: 4px;
+}
+
+.tower.selected {
+  outline: 3px solid gold;
+  outline-offset: 5px;
+}
+
+.tower-level {
+  margin: 0 0 2px 0;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.tower-image-wrap {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+}
+
+.tower-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.tower-star-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  transform: translateX(-50%);
+  min-width: 38px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #2c2100;
+  background: linear-gradient(180deg, #fff5b5, #f6c544);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tower.star-2 .tower-star-badge {
+  color: #06251e;
+  background: linear-gradient(180deg, #a8ffe8, #45d4ad);
+}
+
+.tower.star-3 .tower-star-badge {
+  color: #ffffff;
+  background: linear-gradient(180deg, #ff9fc9, #a352ff);
+}
+
+.enemy {
+  align-items: center;
+}
+
+.enemy p {
+  margin: 0;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background-color: rgba(10, 12, 24, 0.66);
+  font-weight: 900;
 }
 
 .bullet {
@@ -79,19 +221,140 @@ body {
 
 #coin-bar {
   position: absolute;
-  left: 47vw;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 18px;
+  border: 1px solid rgba(255, 215, 0, 0.36);
+  border-radius: 999px;
   color: gold;
-  font-weight: bolder;
-  font-size: 300%;
-  margin-top: 0;
-  text-shadow: 0 0 10px black;
-  display: inline;
+  background-color: rgba(12, 16, 31, 0.66);
+  font-weight: 900;
+  font-size: clamp(28px, 4vw, 48px);
 }
 
 #name {
-  color: rgb(175, 206, 255);
-  margin: 10px 0 0 10px;
-  font-size: 300%;
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  margin: 0;
+  color: rgb(190, 222, 255);
+  font-size: clamp(26px, 4vw, 48px);
   font-weight: 900;
-  display: inline;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background-color: rgba(0, 0, 0, 0.58);
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-panel {
+  position: relative;
+  width: min(430px, 94vw);
+  padding: 26px;
+  border: 1px solid rgba(255, 215, 0, 0.58);
+  border-radius: 14px;
+  color: white;
+  background:
+    linear-gradient(180deg, rgba(33, 39, 70, 0.98), rgba(15, 18, 35, 0.98));
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  color: white;
+  background-color: rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+
+#upgrade-title {
+  margin: 0 0 16px 0;
+  color: gold;
+  font-size: 26px;
+}
+
+.tower-stats {
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.06);
+  line-height: 1.6;
+}
+
+.tower-stats p {
+  margin: 4px 0;
+  font-weight: 800;
+}
+
+.upgrade-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.upgrade-actions button {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #2478ff, #00a6a6);
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.upgrade-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.upgrade-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  #create-bar {
+    padding: 12px;
+  }
+
+  #btn-bar {
+    min-height: auto;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    flex: 1 1 160px;
+  }
+
+  .tower {
+    width: 78px;
+    height: 94px;
+  }
+
+  .tower-image-wrap {
+    width: 66px;
+    height: 66px;
+  }
 }
