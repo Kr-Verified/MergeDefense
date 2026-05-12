@@ -5,6 +5,7 @@ let spawnLv = 1;
 const board = document.getElementById('game-board');
 const createBar = document.getElementById('create-bar');
 const coinBar = document.getElementById('coin-bar');
+const survivalTimeBar = document.getElementById('survival-time');
 const upgradeBtn = document.getElementById('upgrade-create-btn');
 const spawnLvExpress = document.getElementById('spawnLv');
 const priceBar = document.getElementById('price');
@@ -22,6 +23,7 @@ const globalSpeedBtn = document.getElementById('global-speed-btn');
 const globalPowerBtn = document.getElementById('global-power-btn');
 const globalRangeBtn = document.getElementById('global-range-btn');
 const castleHealthBtn = document.getElementById('castle-health-btn');
+const speedModeBtn = document.getElementById('speed-mode-btn');
 let draggedTower = null;
 let selectedTower = null;
 let health = 1000;
@@ -30,6 +32,12 @@ let globalSpeedUpgrade = 0;
 let globalPowerUpgrade = 0;
 let globalRangeUpgrade = 0;
 let castleHealthUpgrade = 0;
+let gameSpeed = 1;
+let enemySpawnInterval = null;
+let towerAttackInterval = null;
+let castleRecoverInterval = null;
+let survivalTimerInterval = null;
+let survivedSeconds = 0;
 const enemies = [];
 document.getElementById('name').textContent = `${localStorage.getItem('name')}`;
 
@@ -38,62 +46,131 @@ const BASE_ATTACK_RANGE = 400;
 const MIN_ATTACK_INTERVAL = 250;
 const BASE_CASTLE_HEALTH = 1000;
 
-function createTower(lv, star = getRandomTowerStar()) {
+function createTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
   return {
     id: towerId++,
     lv: lv,
     star: star,
+    attribute: attribute,
     element: null
   };
 }
 
 function getRandomTowerStar() {
   const random = Math.random();
-  if (random < 0.01) return 3;
-  if (random < 0.10) return 2;
+  if (random < 0.001) return 4;
+  if (random < 0.011) return 3;
+  if (random < 0.101) return 2;
   return 1;
+}
+
+function getRandomEnemyStar() {
+  const random = Math.random();
+  if (random < 0.001) return 4;
+  if (random < 0.011) return 3;
+  if (random < 0.101) return 2;
+  return 1;
+}
+
+function getRandomTowerAttribute() {
+  if (Math.random() >= 0.2) return 'none';
+  const attributes = ['water', 'fire', 'bomb', 'ball'];
+  return attributes[Math.floor(Math.random() * attributes.length)];
 }
 
 function getStarText(star) {
   return `${star}성`;
 }
 
-function getTowerHtml(lv, star) {
+function getEnemyStarDamageMultiplier(star) {
+  if (star === 4) return 8;
+  if (star === 3) return 4;
+  if (star === 2) return 2;
+  return 1;
+}
+
+function getEnemyStarHealthMultiplier(star) {
+  return getEnemyStarDamageMultiplier(star);
+}
+
+function getTowerStarDamageMultiplier(star) {
+  if (star === 4) return 5;
+  return star;
+}
+
+function getAttributeText(attribute) {
+  const names = {
+    water: '물',
+    fire: '불',
+    bomb: '폭탄',
+    ball: '공',
+    none: ''
+  };
+  return names[attribute] || '';
+}
+
+function getTowerHtml(lv, star, attribute = 'none') {
   const stars = '★'.repeat(star);
+  const attributeText = getAttributeText(attribute);
   return `
     <p class="tower-level">${lv} Lv</p>
     <div class="tower-image-wrap">
       <img src="./img/${lv}.png" alt="${lv} Lv tower">
       <span class="tower-star-badge">${stars}</span>
+      ${attributeText ? `<span class="tower-attribute-badge attribute-${attribute}">${attributeText}</span>` : ''}
     </div>
   `;
+}
+
+function updateSurvivalTime() {
+  survivalTimeBar.textContent = `${survivedSeconds}초`;
 }
 
 function updateHealthText() {
   document.getElementById('health').textContent = `${Math.ceil(health)} / ${maxHealth} Hp`;
 }
 
-function createEnemy(lv) {
-  let hp = lv*lv*100;
-  if (lv%5==0) hp*=lv; 
+function createEnemy(lv, star = getRandomEnemyStar()) {
+  let hp = getBaseEnemyHp(lv);
+  hp *= getEnemyStarHealthMultiplier(star);
   return {
     id: enemyId++,
     lv: lv,
+    star: star,
     hp: hp,
+    castleDamage: lv * getEnemyStarDamageMultiplier(star),
     element: null
   }
+}
+
+function getBaseEnemyHp(lv) {
+  let hp = lv*lv*100;
+  if (lv%5==0) hp*=lv;
+  return hp;
+}
+
+function getEnemyHtml(enemy) {
+  const size = parseInt(enemy.lv)%5==0 ? 150 : 100;
+  const stars = '★'.repeat(enemy.star);
+  return `
+    <p class="enemy-level">${enemy.lv} Lv</p>
+    <div class="enemy-image-wrap">
+      <img src="./enemyImg/${enemy.lv}.png" width="${size}px" alt="${enemy.lv} Lv enemy">
+      <span class="enemy-star-badge">${stars}</span>
+    </div>
+    <p class="enemy-hp">${enemy.hp} Hp</p>
+    <p class="enemy-damage">성 공격 ${enemy.castleDamage}</p>
+  `;
 }
 
 function spawnEnemy() {
   const lv = Math.floor(Math.random() * Math.floor(enemyId/10)+1);
   const enemy = createEnemy(lv);
   const div = document.createElement('div');
-  div.className = 'enemy';
+  div.className = `enemy star-${enemy.star}`;
   div.style.display = 'flex';
   div.style.flexDirection = 'column';
-  let size = 100;
-  if (parseInt(enemy.lv)%5==0) size = 150;
-  div.innerHTML = `<p style="margin:0; color:red;">${enemy.lv} Lv</p><img src="./enemyImg/${enemy.lv}.png" width=${size}px></img><p style="color:red;">${enemy.hp} Hp</p>`
+  div.innerHTML = getEnemyHtml(enemy);
   div.draggable = true;
   enemy.element = div;
   div.style.position = 'absolute';
@@ -102,6 +179,9 @@ function spawnEnemy() {
 
   div.dataset.id = enemy.id;
   div.dataset.lv = enemy.lv;
+  div.dataset.star = enemy.star;
+  div.dataset.castleDamage = enemy.castleDamage;
+  div.dataset.lastCastleAttack = '0';
 
   board.appendChild(div);
   makeDraggable(div);
@@ -126,14 +206,20 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < 15) {
-      health-=1;
+      const now = Date.now();
+      const lastCastleAttack = parseInt(enemyDiv.dataset.lastCastleAttack || '0');
+      if (now - lastCastleAttack < 1000 / gameSpeed) return;
+
+      enemyDiv.dataset.lastCastleAttack = `${now}`;
+      health -= parseInt(enemyDiv.dataset.castleDamage || '1');
       if (health<=0) window.location.href = "fail.html";
       updateHealthText();
     }else {
     // 방향 벡터 단위화 후 이동
     if (parseInt(enemyDiv.dataset.lv)==4) speed = 2.3;
-    const vx = (dx / dist) * speed;
-    const vy = (dy / dist) * speed;
+    const slowMultiplier = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0') ? 0.5 : 1;
+    const vx = (dx / dist) * speed * gameSpeed * slowMultiplier;
+    const vy = (dy / dist) * speed * gameSpeed * slowMultiplier;
 
     enemyDiv.style.left = `${enemyDiv.offsetLeft + vx}px`;
     enemyDiv.style.top = `${enemyDiv.offsetTop + vy}px`;
@@ -141,19 +227,18 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
   }, 16);
 }
 
-setInterval(spawnEnemy, 2500);
-
-function spawnTower(lv, star = getRandomTowerStar()) {
-  const tower = createTower(lv, star);
+function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
+  const tower = createTower(lv, star, attribute);
   const div = document.createElement('div');
-  div.className = `tower star-${tower.star}`;
-  div.innerHTML = getTowerHtml(tower.lv, tower.star);
+  div.className = `tower star-${tower.star} attribute-${tower.attribute}`;
+  div.innerHTML = getTowerHtml(tower.lv, tower.star, tower.attribute);
   div.draggable = true;
   tower.element = div;
 
   div.dataset.id = tower.id;
   div.dataset.lv = tower.lv;
   div.dataset.star = tower.star;
+  div.dataset.attribute = tower.attribute;
   setDefaultTowerStats(div);
 
   createBar.appendChild(div);
@@ -169,6 +254,7 @@ function setDefaultTowerStats(tower) {
 
 function copyTowerStats(fromTower, toTower) {
   toTower.dataset.star = fromTower.dataset.star || '1';
+  toTower.dataset.attribute = fromTower.dataset.attribute || 'none';
   toTower.dataset.speedUpgrade = fromTower.dataset.speedUpgrade || '0';
   toTower.dataset.powerUpgrade = fromTower.dataset.powerUpgrade || '0';
   toTower.dataset.rangeUpgrade = fromTower.dataset.rangeUpgrade || '0';
@@ -180,7 +266,7 @@ function getTowerDamage(tower) {
   const star = parseInt(tower.dataset.star || '1');
   const powerUpgrade = parseInt(tower.dataset.powerUpgrade || '0');
   const baseDamage = Math.floor(Math.pow(lv, 1.5)) * 10;
-  return Math.floor(baseDamage * star * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2));
+  return Math.floor(baseDamage * getTowerStarDamageMultiplier(star) * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2));
 }
 
 function getTowerRange(tower) {
@@ -190,7 +276,8 @@ function getTowerRange(tower) {
 
 function getTowerAttackInterval(tower) {
   const speedUpgrade = parseInt(tower.dataset.speedUpgrade || '0');
-  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80);
+  const attributeMultiplier = tower.dataset.attribute === 'ball' ? 0.5 : 1;
+  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80) * attributeMultiplier / gameSpeed;
 }
 
 function getUpgradeCost(tower, type) {
@@ -255,7 +342,9 @@ function refreshUpgradeModal() {
   }
 
   towerLevelText.textContent = `Lv ${selectedTower.dataset.lv}`;
-  towerStarText.textContent = `${getStarText(parseInt(selectedTower.dataset.star || '1'))} 공격력 ${selectedTower.dataset.star || '1'}배`;
+  const towerStar = parseInt(selectedTower.dataset.star || '1');
+  const attributeText = getAttributeText(selectedTower.dataset.attribute || 'none');
+  towerStarText.textContent = `${getStarText(towerStar)} 공격력 ${getTowerStarDamageMultiplier(towerStar)}배${attributeText ? ` / ${attributeText}` : ''}`;
   towerDamageText.textContent = `공격 힘: ${getTowerDamage(selectedTower)}`;
   towerSpeedText.textContent = `공격 속도: ${(1000 / getTowerAttackInterval(selectedTower)).toFixed(2)}회/초`;
   towerRangeText.textContent = `공격 범위: ${getTowerRange(selectedTower)}`;
@@ -321,7 +410,7 @@ function recoverCastleHealth() {
 }
 
 function spawnBtn() {
-  const cost = spawnLv*spawnLv;
+  const cost = getTowerCreateCost();
   if (coins>=cost) {
     coins-=cost;
     coinBar.textContent = `${coins} $`;
@@ -354,12 +443,21 @@ function makeDraggable(elem) {
         parseInt(draggedTower.dataset.star || '1'),
         parseInt(elem.dataset.star || '1')
       );
+      const draggedAttribute = draggedTower.dataset.attribute || 'none';
+      const targetAttribute = elem.dataset.attribute || 'none';
+      const resultAttribute = getMergedTowerAttribute(draggedAttribute, targetAttribute);
       draggedTower.remove();
       elem.remove();
 
-      spawnTower(draggedLv+1, resultStar);
+      spawnTower(draggedLv+1, resultStar, resultAttribute);
     }
   });
+}
+
+function getMergedTowerAttribute(firstAttribute, secondAttribute) {
+  if (firstAttribute === 'ball' || secondAttribute === 'ball') return 'ball';
+  if (firstAttribute !== 'none') return firstAttribute;
+  return secondAttribute;
 }
 
 board.addEventListener('dragover', e => {
@@ -385,8 +483,8 @@ function move(from, to) {
       from.removeChild(draggedTower);
 
       const div = document.createElement('div');
-      div.className = `tower star-${draggedTower.dataset.star || '1'}`;
-      div.innerHTML = getTowerHtml(lv, parseInt(draggedTower.dataset.star || '1'));
+      div.className = `tower star-${draggedTower.dataset.star || '1'} attribute-${draggedTower.dataset.attribute || 'none'}`;
+      div.innerHTML = getTowerHtml(lv, parseInt(draggedTower.dataset.star || '1'), draggedTower.dataset.attribute || 'none');
       div.draggable = true;
       div.dataset.lv = lv;
       div.dataset.id = id;
@@ -451,28 +549,109 @@ function fireBullet(fromTower, toEnemy) {
       clearInterval(interval);
       bullet.remove();
 
-      // 피 깎기
-      toEnemy.hp -= getTowerDamage(fromTower);
-      toEnemy.element.innerHTML = `<p style="margin:0; color:red;">${toEnemy.lv} Lv</p><img src="./enemyImg/${toEnemy.lv}.png" width=100px></img><p style="color:red;">${toEnemy.hp} Hp</p>`;
-      if (toEnemy.hp <= 0) {
-        if (document.body.contains(toEnemy.element)) toEnemy.element.remove();
-        coins += parseInt(toEnemy.element.dataset.lv)*parseInt(toEnemy.element.dataset.lv);
-        coinBar.textContent = `${coins} $`;
-        refreshUpgradeUi();
-        const idx = enemies.indexOf(toEnemy)
-        if (idx!=-1) enemies.splice(idx, 1);
-      }
+      applyTowerHit(fromTower, toEnemy);
       fromTower.dataset.attacking = 'false';
       return;
     }
 
     const speed = 5;
-    const vx = (dx / dist) * speed;
-    const vy = (dy / dist) * speed;
+    const vx = (dx / dist) * speed * gameSpeed;
+    const vy = (dy / dist) * speed * gameSpeed;
 
     bullet.style.left = `${bulletX + vx}px`;
     bullet.style.top = `${bulletY + vy}px`;
   }, 16);
+}
+
+function damageEnemy(enemy, damage) {
+  if (!enemy || !document.body.contains(enemy.element)) return;
+
+  enemy.hp -= Math.floor(damage);
+  enemy.element.innerHTML = getEnemyHtml(enemy);
+
+  if (enemy.hp <= 0) {
+    if (document.body.contains(enemy.element)) enemy.element.remove();
+    coins += parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv);
+    coinBar.textContent = `${coins} $`;
+    refreshUpgradeUi();
+    const idx = enemies.indexOf(enemy)
+    if (idx!=-1) enemies.splice(idx, 1);
+  }
+}
+
+function applyTowerHit(fromTower, targetEnemy) {
+  const attribute = fromTower.dataset.attribute || 'none';
+  const baseDamage = getTowerDamage(fromTower);
+
+  if (attribute === 'bomb') {
+    applyBombDamage(targetEnemy, baseDamage * 0.7);
+    return;
+  }
+
+  damageEnemy(targetEnemy, baseDamage);
+
+  if (attribute === 'water' && document.body.contains(targetEnemy.element)) {
+    targetEnemy.element.dataset.slowUntil = `${Date.now() + 3000}`;
+  }
+
+  if (attribute === 'fire' && document.body.contains(targetEnemy.element)) {
+    applyFireDamage(targetEnemy, baseDamage);
+  }
+
+  if (attribute === 'ball' && document.body.contains(targetEnemy.element)) {
+    promoteEnemyToFourStar(targetEnemy);
+  }
+}
+
+function promoteEnemyToFourStar(enemy) {
+  if (enemy.star >= 4 || !document.body.contains(enemy.element)) return;
+
+  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star);
+  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(4);
+
+  enemy.star = 4;
+  enemy.hp += newMaxHp - oldMaxHp;
+  enemy.castleDamage = enemy.lv * getEnemyStarDamageMultiplier(4);
+  enemy.element.classList.remove('star-1', 'star-2', 'star-3');
+  enemy.element.classList.add('star-4');
+  enemy.element.dataset.star = '4';
+  enemy.element.dataset.castleDamage = enemy.castleDamage;
+  enemy.element.innerHTML = getEnemyHtml(enemy);
+}
+
+function applyFireDamage(enemy, baseDamage) {
+  let ticks = 0;
+  const fireInterval = setInterval(() => {
+    if (!document.body.contains(enemy.element)) {
+      clearInterval(fireInterval);
+      return;
+    }
+
+    ticks += 1;
+    damageEnemy(enemy, baseDamage * 0.25);
+
+    if (ticks >= 3) clearInterval(fireInterval);
+  }, 1000 / gameSpeed);
+}
+
+function applyBombDamage(targetEnemy, damage) {
+  const targetRect = targetEnemy.element.getBoundingClientRect();
+  const targetX = targetRect.left + targetRect.width / 2;
+  const targetY = targetRect.top + targetRect.height / 2;
+  const bombRange = 130;
+
+  [...enemies].forEach(enemy => {
+    if (!document.body.contains(enemy.element)) return;
+
+    const enemyRect = enemy.element.getBoundingClientRect();
+    const enemyX = enemyRect.left + enemyRect.width / 2;
+    const enemyY = enemyRect.top + enemyRect.height / 2;
+    const dx = targetX - enemyX;
+    const dy = targetY - enemyY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist <= bombRange) damageEnemy(enemy, damage);
+  });
 }
 
 function towerAttackLoop() {
@@ -501,9 +680,35 @@ function towerAttackLoop() {
   });
 }
 
-// 짧은 간격으로 확인하고, 실제 발사 주기는 타워별 공격 속도로 제한한다.
-setInterval(towerAttackLoop, 100);
-setInterval(recoverCastleHealth, 1000);
+function getTowerCreateCost() {
+  return Math.ceil(Math.pow(spawnLv, 2.6));
+}
+
+function updateSpeedModeButton() {
+  speedModeBtn.textContent = gameSpeed === 2 ? '2배속 ON' : '2배속 OFF';
+  speedModeBtn.classList.toggle('active', gameSpeed === 2);
+}
+
+function resetGameIntervals() {
+  if (enemySpawnInterval) clearInterval(enemySpawnInterval);
+  if (towerAttackInterval) clearInterval(towerAttackInterval);
+  if (castleRecoverInterval) clearInterval(castleRecoverInterval);
+  if (survivalTimerInterval) clearInterval(survivalTimerInterval);
+
+  enemySpawnInterval = setInterval(spawnEnemy, 2500 / gameSpeed);
+  towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
+  castleRecoverInterval = setInterval(recoverCastleHealth, 1000 / gameSpeed);
+  survivalTimerInterval = setInterval(() => {
+    survivedSeconds += 1;
+    updateSurvivalTime();
+  }, 1000);
+}
+
+function toggleSpeedMode() {
+  gameSpeed = gameSpeed === 1 ? 2 : 1;
+  updateSpeedModeButton();
+  resetGameIntervals();
+}
 
 
 function upgradeCreate() {
@@ -514,7 +719,7 @@ function upgradeCreate() {
     coinBar.textContent = `${coins} $`;
     upgradeBtn.textContent = `생성 단계 향상 ${Math.pow(spawnLv, 4)*5} $`;
     spawnLvExpress.textContent = `${spawnLv} 생성`;
-    priceBar.textContent = `${spawnLv*spawnLv} $`
+    priceBar.textContent = `${getTowerCreateCost()} $`
     refreshUpgradeUi();
   }
 }
@@ -531,5 +736,10 @@ globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
 globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
 globalRangeBtn.addEventListener('click', () => upgradeGlobalTowerStat('range'));
 castleHealthBtn.addEventListener('click', upgradeCastleHealth);
+speedModeBtn.addEventListener('click', toggleSpeedMode);
 updateHealthText();
+updateSurvivalTime();
+updateSpeedModeButton();
+priceBar.textContent = `${getTowerCreateCost()} $`;
 refreshGlobalUpgradeButtons();
+resetGameIntervals();

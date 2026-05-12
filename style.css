@@ -108,6 +108,15 @@ body {
   font-size: 14px;
 }
 
+.speed-mode-btn {
+  background: linear-gradient(135deg, #495057, #15aabf);
+  font-size: 14px;
+}
+
+.speed-mode-btn.active {
+  background: linear-gradient(135deg, #f08c00, #e03131);
+}
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -192,6 +201,37 @@ body {
   white-space: nowrap;
 }
 
+.tower-attribute-badge {
+  position: absolute;
+  right: -4px;
+  top: 4px;
+  min-width: 32px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tower-attribute-badge.attribute-water {
+  background: #1c7ed6;
+}
+
+.tower-attribute-badge.attribute-fire {
+  background: #e03131;
+}
+
+.tower-attribute-badge.attribute-bomb {
+  background: #495057;
+}
+
+.tower-attribute-badge.attribute-ball {
+  background: #862e9c;
+}
+
 .tower.star-2 .tower-star-badge {
   color: #06251e;
   background: linear-gradient(180deg, #a8ffe8, #45d4ad);
@@ -200,6 +240,11 @@ body {
 .tower.star-3 .tower-star-badge {
   color: #ffffff;
   background: linear-gradient(180deg, #ff9fc9, #a352ff);
+}
+
+.tower.star-4 .tower-star-badge {
+  color: #ffffff;
+  background: linear-gradient(180deg, #ffd43b, #f08c00);
 }
 
 .enemy {
@@ -214,6 +259,54 @@ body {
   font-weight: 900;
 }
 
+.enemy-image-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.enemy-image-wrap img {
+  pointer-events: none;
+}
+
+.enemy-star-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  min-width: 38px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #2c2100;
+  background: linear-gradient(180deg, #fff5b5, #f6c544);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.enemy.star-2 .enemy-star-badge {
+  color: #06251e;
+  background: linear-gradient(180deg, #a8ffe8, #45d4ad);
+}
+
+.enemy.star-3 .enemy-star-badge {
+  color: #ffffff;
+  background: linear-gradient(180deg, #ff9fc9, #a352ff);
+}
+
+.enemy.star-4 .enemy-star-badge {
+  color: #ffffff;
+  background: linear-gradient(180deg, #ffd43b, #f08c00);
+}
+
+.enemy-level,
+.enemy-hp,
+.enemy-damage {
+  color: #ff7373;
+}
+
 .bullet {
   position: absolute;
   z-index: 5;
@@ -221,7 +314,7 @@ body {
 
 #coin-bar {
   position: absolute;
-  top: 10px;
+  top: 54px;
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -232,6 +325,21 @@ body {
   background-color: rgba(12, 16, 31, 0.66);
   font-weight: 900;
   font-size: clamp(28px, 4vw, 48px);
+}
+
+#survival-time {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 5px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: #ffffff;
+  background-color: rgba(12, 16, 31, 0.72);
+  font-size: clamp(18px, 3vw, 32px);
+  font-weight: 900;
 }
 
 #name {
