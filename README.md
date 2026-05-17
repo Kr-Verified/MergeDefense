@@ -71,8 +71,8 @@ graph TD
 ## 🕹️ 플레이 방법 (How to Play)
 
 ### 1. 게임 시작 및 준비
-1. [index.html](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/index.html)에 접속하여 플레이어의 닉네임을 입력하고 **Start** 버튼을 누릅니다.
-2. 닉네임은 브라우저의 `localStorage`에 영구 기록되며, [main.html](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/main.html) 화면 상단 왼쪽에 닉네임이 출력됩니다.
+1. https://mergedefense.netlify.app 에 접속하여 플레이어의 닉네임을 입력하고 **Start** 버튼을 누릅니다.
+2. 닉네임은 브라우저의 `localStorage`에 영구 기록되며, main.html 화면 상단 왼쪽에 닉네임이 출력됩니다.  
 
 ### 2. 타워 관리 (생성, 합성, 배치)
 * **타워 생성**: 하단의 **[Lv 생성]** 버튼을 누르면 골드가 차감되며 대기소(`create-bar`)에 새로운 무작위 등급/속성의 타워가 나타납니다.
@@ -85,7 +85,7 @@ graph TD
 
 ### 3. 공격과 방어
 * **자동 전투**: 게임 보드에 설치된 타워는 자신의 사거리 범위 내에 있는 가장 가까운 적을 조준해 지속적으로 투사체를 발사합니다.
-* **성(Castle) 수호**: 우측 끝에서 출현하여 좌측 성 방어 기지로 진격하는 적들이 성벽에 도달하면 성의 체력(`Hp`)이 실시간으로 감소합니다. 성의 체력이 0 이하가 되면 [fail.html](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/fail.html) 게임 오버 페이지로 강제 이동됩니다.
+* **성(Castle) 수호**: 우측 끝에서 출현하여 좌측 성 방어 기지로 진격하는 적들이 성벽에 도달하면 성의 체력(`Hp`)이 실시간으로 감소합니다. 성의 체력이 0 이하가 되면 fail.html 게임 오버 페이지로 강제 이동됩니다.
 
 ### 4. 강력한 시너지 업그레이드
 * **개별 업그레이드**: 게임 보드에 설치된 타워를 마우스로 클릭하면 상세 업그레이드 모달이 오픈됩니다. 이곳에서 **[공격 속도 향상]**, **[공격 힘 향상]**, **[공격 범위 향상]**을 단독으로 적용할 수 있습니다.
@@ -221,43 +221,23 @@ mergedefense/
 
 ### 🔍 주요 핵심 코드 함수 명세
 
-* **[`createTower(lv, star, attribute)`](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/script.js#L49-L57)**
+* **`createTower(lv, star, attribute)`**
   새로운 타워 객체의 원형 데이터를 생성하는 팩토리 함수입니다. 무작위 확률 함수를 통해 성급과 고유 속성을 주입받습니다.
-* **[`spawnEnemy()`](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/script.js#L166-L196)**
+* **`spawnEnemy()`**
   스케일링 레벨 한도 내에서 몬스터 객체와 DOM을 동적으로 조립 및 생성하여 우측 경계선에 배치하고, `moveEnemy` 스레드를 기동시킵니다.
-* **[`moveEnemy(enemyDiv, targetX, targetY, speed)`](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/script.js#L198-L228)**
+* **`moveEnemy(enemyDiv, targetX, targetY, speed)`**
   좌측 성곽 좌표를 목표 벡터로 설정한 뒤, **16ms** 단위로 X/Y 방향 벡터를 단위화하여 미끄러지듯 전진시킵니다. 물 속성의 둔화 상태(slowUntil)를 실시간 판독하여 프레임 속도를 50% 제어합니다. 성벽 도달 시 **1초 쿨다운**을 기반으로 데미지를 누적시킵니다.
-* **[`makeDraggable(elem)`](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/script.js#L422-L455)**
+* **`makeDraggable(elem)`**
   HTML5 Drag & Drop 이벤트를 활용해 요소에 드래그 자격을 부여하며, 타워 간 충돌을 인식하여 동일 레벨일 시 기존 DOM들을 청소하고 상위 레벨 타워를 스폰시키는 머지 코어 핸들러입니다.
-* **[`applyTowerHit(fromTower, targetEnemy)`](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/script.js#L582-L604)**
+* **`applyTowerHit(fromTower, targetEnemy)`**
   투사체가 몬스터 바디에 도달했을 때 실 연산되는 피격 핸들러입니다. 공격 타워의 고유 속성을 조건문으로 즉각 해독하여 `applyFireDamage`(화염 도트), `applyBombDamage`(광역 타격), `promoteEnemyToFourStar`(공 패널티 폭주)를 분기 처리합니다.
 
 ---
 
 ## 🚀 실행 방법 (How to Run)
 
-본 게임은 백엔드 데이터베이스 서버나 빌드 컴파일 과정이 필요 없는 **클라이언트 사이드 단독 구동형 정적 웹 앱**입니다.
+https://mergedefense.netlify.app/
 
-### 방법 1. 단순 로컬 브라우징
-1. 해당 프로젝트 디렉토리를 로컬 PC에 확보합니다.
-2. [index.html](file:///Users/eunchong/Desktop/%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/mergedefense/index.html) 파일을 마우스 더블클릭하여 사용하는 웹 브라우저(Chrome, Safari, Edge 등)로 즉시 실행합니다.
-
-### 방법 2. 간단한 로컬 웹 서버 기동 (정적 호스팅 모사)
-보다 정밀한 브라우저 쿠키 연동 및 Asset 캐싱 환경에서 플레이하려면 간단한 HTTP 정적 서버 실행을 추천합니다.
-
-* **Python 3 환경인 경우:**
-  ```bash
-  cd /Users/eunchong/Desktop/프로젝트/mergedefense
-  python3 -m http.server 8080
-  ```
-  이후 브라우저 주소창에 `http://localhost:8080`을 입력하여 구동합니다.
-
-* **Node.js 및 VSCode Live Server 환경인 경우:**
-  VS Code 에디터에서 해당 폴더를 오픈한 후 우측 하단의 **Go Live** 버튼을 누르거나, 아래 CLI 명령어를 통해 전역 `serve` 패키지로 구동할 수 있습니다.
-  ```bash
-  npm install -g serve
-  serve -s .
-  ```
 
 ---
 
