@@ -43,6 +43,7 @@ let draggedEquipment = null;
 let selectedTower = null;
 let inventoryView = 'tower';
 let isGamePaused = false;
+let isGameOver = false;
 const selectedUpgradeAmounts = {
   create: '1',
   globalSpeed: '1',
@@ -274,6 +275,50 @@ function updateHealthText() {
   document.getElementById('health').textContent = `${Math.ceil(health)} / ${maxHealth} Hp`;
 }
 
+function getSupabaseConfig() {
+  return window.SUPABASE_CONFIG || {};
+}
+
+function isSupabaseConfigured() {
+  const config = getSupabaseConfig();
+  return Boolean(config.url && (config.publicKey || config.anonKey) && config.rankingsTable);
+}
+
+async function saveRanking() {
+  if (!isSupabaseConfigured()) return;
+
+  const config = getSupabaseConfig();
+  const supabaseKey = config.publicKey || config.anonKey;
+  const playerName = localStorage.getItem('name') || 'Guest';
+
+  await fetch(`${config.url}/rest/v1/${config.rankingsTable}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify({
+      name: playerName,
+      survival_time: survivedSeconds
+    })
+  });
+}
+
+async function endGame() {
+  if (isGameOver) return;
+
+  isGameOver = true;
+  try {
+    await saveRanking();
+  } catch (error) {
+    console.error('Failed to save ranking', error);
+  } finally {
+    window.location.href = 'fail.html';
+  }
+}
+
 function createEnemy(lv, star = getRandomEnemyStar()) {
   let hp = getBaseEnemyHp(lv);
   hp *= getEnemyStarHealthMultiplier(star);
@@ -366,7 +411,10 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
 
       enemyDiv.dataset.lastCastleAttack = `${now}`;
       health -= parseInt(enemyDiv.dataset.castleDamage || '1');
-      if (health<=0) window.location.href = "fail.html";
+      if (health<=0) {
+        endGame();
+        return;
+      }
       updateHealthText();
     }else {
     // 방향 벡터 단위화 후 이동
