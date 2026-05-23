@@ -1169,10 +1169,18 @@ function addTowerTime(tower, amount) {
   if (tower === selectedTower) refreshUpgradeModal();
 }
 
-function damageEnemy(enemy, damage, sourceTower = null) {
-  if (!enemy || !document.body.contains(enemy.element)) return;
+function recoverCastleHealthByAmount(amount) {
+  if (amount <= 0 || health >= maxHealth) return;
 
-  enemy.hp -= Math.floor(damage);
+  health = Math.min(maxHealth, health + amount);
+  updateHealthText();
+}
+
+function damageEnemy(enemy, damage, sourceTower = null) {
+  if (!enemy || !document.body.contains(enemy.element)) return 0;
+
+  const appliedDamage = Math.floor(damage);
+  enemy.hp -= appliedDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
 
   if (enemy.hp <= 0) {
@@ -1184,6 +1192,8 @@ function damageEnemy(enemy, damage, sourceTower = null) {
     const idx = enemies.indexOf(enemy)
     if (idx!=-1) enemies.splice(idx, 1);
   }
+
+  return appliedDamage;
 }
 
 function applyTowerHit(fromTower, targetEnemy) {
@@ -1195,7 +1205,11 @@ function applyTowerHit(fromTower, targetEnemy) {
     return;
   }
 
-  damageEnemy(targetEnemy, baseDamage, fromTower);
+  const dealtDamage = damageEnemy(targetEnemy, baseDamage, fromTower);
+
+  if (attribute === 'blood') {
+    recoverCastleHealthByAmount(dealtDamage * 0.1);
+  }
 
   if (attribute === 'water' && document.body.contains(targetEnemy.element)) {
     targetEnemy.element.dataset.slowUntil = `${Date.now() + 3000}`;

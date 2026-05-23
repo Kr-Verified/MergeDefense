@@ -333,6 +333,10 @@ body {
   background: #795548;
 }
 
+.tower-attribute-badge.attribute-blood {
+  background: #c92a2a;
+}
+
 .tower.star-2 .tower-star-badge {
   color: #06251e;
   background: linear-gradient(180deg, #a8ffe8, #45d4ad);
