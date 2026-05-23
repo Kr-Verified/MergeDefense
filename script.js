@@ -1,5 +1,6 @@
 let towerId = 0;
 let enemyId = 0;
+let equipmentId = 0;
 let coins = 3;
 let spawnLv = 1;
 const board = document.getElementById('game-board');
@@ -16,35 +17,93 @@ const towerStarText = document.getElementById('tower-star');
 const towerDamageText = document.getElementById('tower-damage');
 const towerSpeedText = document.getElementById('tower-speed');
 const towerRangeText = document.getElementById('tower-range');
+const towerTimeText = document.getElementById('tower-time');
 const upgradeSpeedBtn = document.getElementById('upgrade-speed-btn');
 const upgradePowerBtn = document.getElementById('upgrade-power-btn');
 const upgradeRangeBtn = document.getElementById('upgrade-range-btn');
+const timeUpgradeSpeedBtn = document.getElementById('time-upgrade-speed-btn');
+const timeUpgradePowerBtn = document.getElementById('time-upgrade-power-btn');
+const timeUpgradeRangeBtn = document.getElementById('time-upgrade-range-btn');
+const timeUpgradeStarBtn = document.getElementById('time-upgrade-star-btn');
+const towerCountBar = document.getElementById('tower-count');
 const globalSpeedBtn = document.getElementById('global-speed-btn');
 const globalPowerBtn = document.getElementById('global-power-btn');
 const globalRangeBtn = document.getElementById('global-range-btn');
 const castleHealthBtn = document.getElementById('castle-health-btn');
+const towerLimitBtn = document.getElementById('tower-limit-btn');
 const speedModeBtn = document.getElementById('speed-mode-btn');
+const towerViewBtn = document.getElementById('tower-view-btn');
+const itemViewBtn = document.getElementById('item-view-btn');
+const equipmentSlots = document.getElementById('equipment-slots');
+const inventoryEmpty = document.getElementById('inventory-empty');
 let draggedTower = null;
+let draggedEquipment = null;
 let selectedTower = null;
+let inventoryView = 'tower';
+let isGamePaused = false;
+const selectedUpgradeAmounts = {
+  create: '1',
+  globalSpeed: '1',
+  globalPower: '1',
+  globalRange: '1',
+  castleHealth: '1',
+  towerLimit: '1',
+  towerSpeed: '1',
+  towerPower: '1',
+  towerRange: '1'
+};
 let health = 1000;
 let maxHealth = 1000;
 let globalSpeedUpgrade = 0;
 let globalPowerUpgrade = 0;
 let globalRangeUpgrade = 0;
 let castleHealthUpgrade = 0;
+let towerLimitUpgrade = 0;
+let towerLimit = 10;
 let gameSpeed = 1;
 let enemySpawnInterval = null;
 let towerAttackInterval = null;
 let castleRecoverInterval = null;
 let survivalTimerInterval = null;
+let towerTimeInterval = null;
 let survivedSeconds = 0;
 const enemies = [];
+const spawnedLimitedEnemyLevels = new Set();
 document.getElementById('name').textContent = `${localStorage.getItem('name')}`;
 
 const BASE_ATTACK_INTERVAL = 1000;
 const BASE_ATTACK_RANGE = 400;
 const MIN_ATTACK_INTERVAL = 250;
 const BASE_CASTLE_HEALTH = 1000;
+const TOWER_STAR_UPGRADE_COSTS = {
+  2: 50,
+  3: 300,
+  4: 1800,
+  5: 8000
+};
+const EQUIPMENT_SLOT_UNLOCK_LEVELS = [0, 10, 100];
+const EQUIPMENT_TYPES = {
+  oil: {
+    name: '기름',
+    stat: 'speed',
+    description: '공격속도'
+  },
+  scope: {
+    name: '조준경',
+    stat: 'range',
+    description: '공격범위'
+  },
+  powder: {
+    name: '화약',
+    stat: 'power',
+    description: '공격파워'
+  },
+  weight: {
+    name: '무게추',
+    stat: 'splash',
+    description: '범위공격'
+  }
+};
 
 function createTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
   return {
@@ -74,7 +133,7 @@ function getRandomEnemyStar() {
 
 function getRandomTowerAttribute() {
   if (Math.random() >= 0.2) return 'none';
-  const attributes = ['water', 'fire', 'bomb', 'ball'];
+  const attributes = ['water', 'fire', 'bomb', 'ball', 'power', 'wall', 'blood'];
   return attributes[Math.floor(Math.random() * attributes.length)];
 }
 
@@ -94,6 +153,7 @@ function getEnemyStarHealthMultiplier(star) {
 }
 
 function getTowerStarDamageMultiplier(star) {
+  if (star === 5) return 12;
   if (star === 4) return 5;
   return star;
 }
@@ -104,9 +164,66 @@ function getAttributeText(attribute) {
     fire: '불',
     bomb: '폭탄',
     ball: '공',
+    power: '힘',
+    wall: '벽',
+    blood: '피',
     none: ''
   };
   return names[attribute] || '';
+}
+
+function createEquipment() {
+  const types = Object.keys(EQUIPMENT_TYPES);
+  const type = types[Math.floor(Math.random() * types.length)];
+  return {
+    id: equipmentId++,
+    type: type,
+    value: Math.floor(Math.random() * 43) + 3
+  };
+}
+
+function createMergedEquipment(firstEquipment, secondEquipment) {
+  const minValue = Math.min(firstEquipment.value, secondEquipment.value);
+  const maxValue = firstEquipment.value + secondEquipment.value;
+  return {
+    id: equipmentId++,
+    type: firstEquipment.type,
+    value: Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue
+  };
+}
+
+function getEquipmentHtml(equipment) {
+  const meta = EQUIPMENT_TYPES[equipment.type];
+  return `
+    <p class="equipment-name">${meta.name}</p>
+    <p class="equipment-effect">${meta.description} +${equipment.value}%</p>
+  `;
+}
+
+function getTowerEquipment(tower) {
+  try {
+    const equipment = JSON.parse(tower.dataset.equipment || '[null,null,null]');
+    return [equipment[0] || null, equipment[1] || null, equipment[2] || null];
+  } catch (error) {
+    return [null, null, null];
+  }
+}
+
+function setTowerEquipment(tower, equipment) {
+  tower.dataset.equipment = JSON.stringify(equipment);
+}
+
+function getEquipmentBonus(tower, stat) {
+  return getTowerEquipment(tower).reduce((sum, equipment) => {
+    if (!equipment || EQUIPMENT_TYPES[equipment.type].stat !== stat) return sum;
+    return sum + equipment.value / 100;
+  }, 0);
+}
+
+function getTowerUpgradeTotal(tower) {
+  return parseInt(tower.dataset.speedUpgrade || '0') +
+    parseInt(tower.dataset.powerUpgrade || '0') +
+    parseInt(tower.dataset.rangeUpgrade || '0');
 }
 
 function getTowerHtml(lv, star, attribute = 'none') {
@@ -124,6 +241,12 @@ function getTowerHtml(lv, star, attribute = 'none') {
 
 function updateSurvivalTime() {
   survivalTimeBar.textContent = `${survivedSeconds}초`;
+}
+
+function updateTopStatus() {
+  updateSurvivalTime();
+  coinBar.textContent = `${coins} $`;
+  towerCountBar.textContent = `${getInstalledTowerCount()} / ${towerLimit} 포탑`;
 }
 
 function updateHealthText() {
@@ -145,7 +268,7 @@ function createEnemy(lv, star = getRandomEnemyStar()) {
 
 function getBaseEnemyHp(lv) {
   let hp = lv*lv*100;
-  if (lv%5==0) hp*=lv;
+  if (lv%5==0) hp*=lv*2;
   return hp;
 }
 
@@ -164,7 +287,15 @@ function getEnemyHtml(enemy) {
 }
 
 function spawnEnemy() {
-  const lv = Math.floor(Math.random() * Math.floor(enemyId/10)+1);
+  if (isGamePaused) return;
+
+  const maxLv = Math.floor(enemyId / 10) + 1;
+  const spawnableLevels = [];
+  for (let lv = 1; lv <= maxLv; lv += 1) {
+    if (lv % 5 !== 0 || !spawnedLimitedEnemyLevels.has(lv)) spawnableLevels.push(lv);
+  }
+  const lv = spawnableLevels[Math.floor(Math.random() * spawnableLevels.length)];
+  if (lv % 5 === 0) spawnedLimitedEnemyLevels.add(lv);
   const enemy = createEnemy(lv);
   const div = document.createElement('div');
   div.className = `enemy star-${enemy.star}`;
@@ -197,6 +328,8 @@ function spawnEnemy() {
 
 function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
   const interval = setInterval(() => {
+    if (isGamePaused) return;
+
     const rect = enemyDiv.getBoundingClientRect();
     const x = rect.left;
     const y = rect.top;
@@ -216,7 +349,9 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       updateHealthText();
     }else {
     // 방향 벡터 단위화 후 이동
-    if (parseInt(enemyDiv.dataset.lv)==4) speed = 2.3;
+    if (parseInt(enemyDiv.dataset.lv)%4==0) speed = 2.3;
+    if (parseInt(enemyDiv.dataset.lv)%5==0) speed *= 0.5;
+    if (Date.now() < parseInt(enemyDiv.dataset.stopUntil || '0')) return;
     const slowMultiplier = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0') ? 0.5 : 1;
     const vx = (dx / dist) * speed * gameSpeed * slowMultiplier;
     const vy = (dy / dist) * speed * gameSpeed * slowMultiplier;
@@ -243,6 +378,27 @@ function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerA
 
   createBar.appendChild(div);
   makeDraggable(div);
+  updateInventoryView();
+}
+
+function spawnEquipment() {
+  const equipment = createEquipment();
+  addEquipmentToInventory(equipment);
+}
+
+function addEquipmentToInventory(equipment) {
+  const div = document.createElement('div');
+  div.className = `equipment equipment-${equipment.type}`;
+  div.draggable = true;
+  div.innerHTML = getEquipmentHtml(equipment);
+
+  div.dataset.id = equipment.id;
+  div.dataset.type = equipment.type;
+  div.dataset.value = equipment.value;
+
+  createBar.appendChild(div);
+  makeEquipmentDraggable(div);
+  updateInventoryView();
 }
 
 function setDefaultTowerStats(tower) {
@@ -250,6 +406,8 @@ function setDefaultTowerStats(tower) {
   tower.dataset.powerUpgrade = tower.dataset.powerUpgrade || '0';
   tower.dataset.rangeUpgrade = tower.dataset.rangeUpgrade || '0';
   tower.dataset.lastAttack = tower.dataset.lastAttack || '0';
+  tower.dataset.equipment = tower.dataset.equipment || '[null,null,null]';
+  tower.dataset.time = tower.dataset.time || '0';
 }
 
 function copyTowerStats(fromTower, toTower) {
@@ -259,6 +417,8 @@ function copyTowerStats(fromTower, toTower) {
   toTower.dataset.powerUpgrade = fromTower.dataset.powerUpgrade || '0';
   toTower.dataset.rangeUpgrade = fromTower.dataset.rangeUpgrade || '0';
   toTower.dataset.lastAttack = fromTower.dataset.lastAttack || '0';
+  toTower.dataset.equipment = fromTower.dataset.equipment || '[null,null,null]';
+  toTower.dataset.time = fromTower.dataset.time || '0';
 }
 
 function getTowerDamage(tower) {
@@ -266,18 +426,27 @@ function getTowerDamage(tower) {
   const star = parseInt(tower.dataset.star || '1');
   const powerUpgrade = parseInt(tower.dataset.powerUpgrade || '0');
   const baseDamage = Math.floor(Math.pow(lv, 1.5)) * 10;
-  return Math.floor(baseDamage * getTowerStarDamageMultiplier(star) * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2));
+  let attributeMultiplier = tower.dataset.attribute === 'power' ? 2 : 1;
+  if (tower.dataset.attribute === 'blood') attributeMultiplier *= 0.5;
+  return Math.floor(baseDamage * getTowerStarDamageMultiplier(star) * attributeMultiplier * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2 + getEquipmentBonus(tower, 'power')));
 }
 
 function getTowerRange(tower) {
   const rangeUpgrade = parseInt(tower.dataset.rangeUpgrade || '0');
-  return BASE_ATTACK_RANGE + rangeUpgrade * 60 + globalRangeUpgrade * 40;
+  return Math.floor((BASE_ATTACK_RANGE + rangeUpgrade * 60 + globalRangeUpgrade * 40) * (1 + getEquipmentBonus(tower, 'range')));
 }
 
 function getTowerAttackInterval(tower) {
   const speedUpgrade = parseInt(tower.dataset.speedUpgrade || '0');
-  const attributeMultiplier = tower.dataset.attribute === 'ball' ? 0.5 : 1;
-  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80) * attributeMultiplier / gameSpeed;
+  let attributeMultiplier = tower.dataset.attribute === 'ball' ? 0.5 : 1;
+  if (tower.dataset.attribute === 'wall') attributeMultiplier *= 2;
+  const starMultiplier = parseInt(tower.dataset.star || '1') === 5 ? 1 / 1.5 : 1;
+  const equipmentMultiplier = Math.max(0.1, 1 - getEquipmentBonus(tower, 'speed'));
+  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80) * attributeMultiplier * starMultiplier * equipmentMultiplier / gameSpeed;
+}
+
+function getBombRange(tower) {
+  return Math.floor(130 * (1 + getEquipmentBonus(tower, 'splash')));
 }
 
 function getUpgradeCost(tower, type) {
@@ -299,31 +468,153 @@ function getCastleHealthUpgradeCost() {
   return Math.pow(castleHealthUpgrade + 1, 2) * 30;
 }
 
-function refreshGlobalUpgradeButtons() {
-  const speedCost = getGlobalUpgradeCost('speed');
-  const powerCost = getGlobalUpgradeCost('power');
-  const rangeCost = getGlobalUpgradeCost('range');
-  const castleHealthCost = getCastleHealthUpgradeCost();
+function getTowerLimitUpgradeCost() {
+  return 10 * Math.pow(10, towerLimitUpgrade);
+}
 
-  globalSpeedBtn.textContent = `전체 속도 Lv.${globalSpeedUpgrade} ${speedCost} $`;
-  globalPowerBtn.textContent = `전체 힘 Lv.${globalPowerUpgrade} ${powerCost} $`;
-  globalRangeBtn.textContent = `전체 범위 Lv.${globalRangeUpgrade} ${rangeCost} $`;
-  castleHealthBtn.textContent = `성 체력 Lv.${castleHealthUpgrade} ${castleHealthCost} $`;
-  globalSpeedBtn.disabled = coins < speedCost;
-  globalPowerBtn.disabled = coins < powerCost;
-  globalRangeBtn.disabled = coins < rangeCost;
-  castleHealthBtn.disabled = coins < castleHealthCost;
+function getInstalledTowerCount() {
+  return [...board.querySelectorAll('.tower')].length;
+}
+
+function getUpgradeCostForLevel(key, level) {
+  if (key === 'create') return Math.pow(level, 4) * 5;
+  if (key === 'globalSpeed' || key === 'globalPower' || key === 'globalRange') return Math.pow(level + 1, 2) * 25;
+  if (key === 'castleHealth') return Math.pow(level + 1, 2) * 30;
+  if (key === 'towerLimit') return 10 * Math.pow(10, level);
+  if (!selectedTower) return Infinity;
+
+  const towerLv = parseInt(selectedTower.dataset.lv);
+  return towerLv * Math.pow(level + 1, 2) * 5;
+}
+
+function getCurrentUpgradeLevel(key) {
+  if (key === 'create') return spawnLv;
+  if (key === 'globalSpeed') return globalSpeedUpgrade;
+  if (key === 'globalPower') return globalPowerUpgrade;
+  if (key === 'globalRange') return globalRangeUpgrade;
+  if (key === 'castleHealth') return castleHealthUpgrade;
+  if (key === 'towerLimit') return towerLimitUpgrade;
+  if (!selectedTower) return 0;
+  if (key === 'towerSpeed') return parseInt(selectedTower.dataset.speedUpgrade || '0');
+  if (key === 'towerPower') return parseInt(selectedTower.dataset.powerUpgrade || '0');
+  if (key === 'towerRange') return parseInt(selectedTower.dataset.rangeUpgrade || '0');
+  return 0;
+}
+
+function getUpgradeCostForCount(key, count) {
+  const currentLevel = getCurrentUpgradeLevel(key);
+  let totalCost = 0;
+
+  for (let i = 0; i < count; i += 1) {
+    const level = key === 'create' ? currentLevel + i : currentLevel + i;
+    totalCost += getUpgradeCostForLevel(key, level);
+  }
+
+  return totalCost;
+}
+
+function getMaxAffordableUpgradeCount(key) {
+  let count = 0;
+  let totalCost = 0;
+  const currentLevel = getCurrentUpgradeLevel(key);
+
+  while (count < 10000) {
+    const nextCost = getUpgradeCostForLevel(key, currentLevel + count);
+    if (totalCost + nextCost > coins) break;
+    totalCost += nextCost;
+    count += 1;
+  }
+
+  return count;
+}
+
+function getSelectedUpgradeCount(key) {
+  const amount = selectedUpgradeAmounts[key] || '1';
+  if (amount === 'max') return getMaxAffordableUpgradeCount(key);
+  return parseInt(amount);
+}
+
+function getSelectedUpgradeCost(key) {
+  return getUpgradeCostForCount(key, getSelectedUpgradeCount(key));
+}
+
+function getUpgradeAmountLabel(key) {
+  const amount = selectedUpgradeAmounts[key] || '1';
+  if (amount !== 'max') return `x${amount}`;
+  return `max x${getMaxAffordableUpgradeCount(key)}`;
+}
+
+function setupUpgradeAmountControls(button, key) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'upgrade-button-wrap';
+  button.parentNode.insertBefore(wrapper, button);
+  wrapper.appendChild(button);
+
+  const controls = document.createElement('div');
+  controls.className = 'upgrade-amount-controls';
+
+  ['1', '10', '100'].forEach(amount => {
+    const amountButton = document.createElement('button');
+    amountButton.type = 'button';
+    amountButton.className = 'upgrade-amount-btn';
+    amountButton.textContent = `x${amount}`;
+    amountButton.dataset.upgradeKey = key;
+    amountButton.dataset.amount = amount;
+    amountButton.addEventListener('click', () => {
+      selectedUpgradeAmounts[key] = amount;
+      refreshUpgradeUi();
+    });
+    controls.appendChild(amountButton);
+  });
+
+  wrapper.appendChild(controls);
+}
+
+function refreshUpgradeAmountControls() {
+  document.querySelectorAll('.upgrade-amount-btn').forEach(button => {
+    button.classList.toggle('active', selectedUpgradeAmounts[button.dataset.upgradeKey] === button.dataset.amount);
+  });
+}
+
+function refreshGlobalUpgradeButtons() {
+  const speedCost = getSelectedUpgradeCost('globalSpeed');
+  const powerCost = getSelectedUpgradeCost('globalPower');
+  const rangeCost = getSelectedUpgradeCost('globalRange');
+  const castleHealthCost = getSelectedUpgradeCost('castleHealth');
+
+  globalSpeedBtn.textContent = `전체 속도 Lv.${globalSpeedUpgrade} ${getUpgradeAmountLabel('globalSpeed')} ${speedCost} $`;
+  globalPowerBtn.textContent = `전체 힘 Lv.${globalPowerUpgrade} ${getUpgradeAmountLabel('globalPower')} ${powerCost} $`;
+  globalRangeBtn.textContent = `전체 범위 Lv.${globalRangeUpgrade} ${getUpgradeAmountLabel('globalRange')} ${rangeCost} $`;
+  castleHealthBtn.textContent = `성 체력 Lv.${castleHealthUpgrade} ${getUpgradeAmountLabel('castleHealth')} ${castleHealthCost} $`;
+  const towerLimitCost = getSelectedUpgradeCost('towerLimit');
+  towerLimitBtn.textContent = `설치 최대치 ${getInstalledTowerCount()} / ${towerLimit} ${getUpgradeAmountLabel('towerLimit')} ${towerLimitCost} $`;
+  globalSpeedBtn.disabled = getSelectedUpgradeCount('globalSpeed') < 1 || coins < speedCost;
+  globalPowerBtn.disabled = getSelectedUpgradeCount('globalPower') < 1 || coins < powerCost;
+  globalRangeBtn.disabled = getSelectedUpgradeCount('globalRange') < 1 || coins < rangeCost;
+  castleHealthBtn.disabled = getSelectedUpgradeCount('castleHealth') < 1 || coins < castleHealthCost;
+  towerLimitBtn.disabled = getSelectedUpgradeCount('towerLimit') < 1 || coins < towerLimitCost;
+  refreshUpgradeAmountControls();
 }
 
 function refreshUpgradeUi() {
+  updateTopStatus();
+  refreshCreateUpgradeButton();
   refreshGlobalUpgradeButtons();
   if (selectedTower) refreshUpgradeModal();
+}
+
+function refreshCreateUpgradeButton() {
+  const cost = getSelectedUpgradeCost('create');
+  upgradeBtn.textContent = `생성 단계 향상 ${getUpgradeAmountLabel('create')} ${cost} $`;
+  upgradeBtn.disabled = getSelectedUpgradeCount('create') < 1 || coins < cost;
+  refreshUpgradeAmountControls();
 }
 
 function openUpgradeModal(tower) {
   if (!board.contains(tower)) return;
   if (selectedTower && selectedTower !== tower) selectedTower.classList.remove('selected');
   selectedTower = tower;
+  isGamePaused = true;
   tower.classList.add('selected');
   refreshUpgradeModal();
   upgradeModal.classList.remove('hidden');
@@ -332,6 +623,7 @@ function openUpgradeModal(tower) {
 function closeUpgradeModal() {
   if (selectedTower) selectedTower.classList.remove('selected');
   selectedTower = null;
+  isGamePaused = false;
   upgradeModal.classList.add('hidden');
 }
 
@@ -348,61 +640,266 @@ function refreshUpgradeModal() {
   towerDamageText.textContent = `공격 힘: ${getTowerDamage(selectedTower)}`;
   towerSpeedText.textContent = `공격 속도: ${(1000 / getTowerAttackInterval(selectedTower)).toFixed(2)}회/초`;
   towerRangeText.textContent = `공격 범위: ${getTowerRange(selectedTower)}`;
+  towerTimeText.textContent = `타임: ${parseInt(selectedTower.dataset.time || '0')}`;
+  refreshEquipmentSlots();
 
-  const speedCost = getUpgradeCost(selectedTower, 'speed');
-  const powerCost = getUpgradeCost(selectedTower, 'power');
-  const rangeCost = getUpgradeCost(selectedTower, 'range');
+  const speedCost = getSelectedUpgradeCost('towerSpeed');
+  const powerCost = getSelectedUpgradeCost('towerPower');
+  const rangeCost = getSelectedUpgradeCost('towerRange');
+  const timeSpeedCount = getSelectedTimeUpgradeCount('speed');
+  const timePowerCount = getSelectedTimeUpgradeCount('power');
+  const timeRangeCount = getSelectedTimeUpgradeCount('range');
+  const timeSpeedCost = getTimeUpgradeCostForCount(selectedTower, 'speed', timeSpeedCount);
+  const timePowerCost = getTimeUpgradeCostForCount(selectedTower, 'power', timePowerCount);
+  const timeRangeCost = getTimeUpgradeCostForCount(selectedTower, 'range', timeRangeCount);
+  const starUpgradeCost = getTowerStarUpgradeCost(selectedTower);
 
-  upgradeSpeedBtn.textContent = `공격 속도 향상 ${speedCost} $`;
-  upgradePowerBtn.textContent = `공격 힘 향상 ${powerCost} $`;
-  upgradeRangeBtn.textContent = `공격 범위 향상 ${rangeCost} $`;
-  upgradeSpeedBtn.disabled = coins < speedCost;
-  upgradePowerBtn.disabled = coins < powerCost;
-  upgradeRangeBtn.disabled = coins < rangeCost;
+  upgradeSpeedBtn.textContent = `공격 속도 향상 ${getUpgradeAmountLabel('towerSpeed')} ${speedCost} $`;
+  upgradePowerBtn.textContent = `공격 힘 향상 ${getUpgradeAmountLabel('towerPower')} ${powerCost} $`;
+  upgradeRangeBtn.textContent = `공격 범위 향상 ${getUpgradeAmountLabel('towerRange')} ${rangeCost} $`;
+  timeUpgradeSpeedBtn.textContent = `타임 속도 향상 ${getTimeUpgradeAmountLabel('speed')} ${timeSpeedCost} T`;
+  timeUpgradePowerBtn.textContent = `타임 힘 향상 ${getTimeUpgradeAmountLabel('power')} ${timePowerCost} T`;
+  timeUpgradeRangeBtn.textContent = `타임 범위 향상 ${getTimeUpgradeAmountLabel('range')} ${timeRangeCost} T`;
+  timeUpgradeStarBtn.textContent = getTowerStarUpgradeText(selectedTower);
+  upgradeSpeedBtn.disabled = getSelectedUpgradeCount('towerSpeed') < 1 || coins < speedCost;
+  upgradePowerBtn.disabled = getSelectedUpgradeCount('towerPower') < 1 || coins < powerCost;
+  upgradeRangeBtn.disabled = getSelectedUpgradeCount('towerRange') < 1 || coins < rangeCost;
+  timeUpgradeSpeedBtn.disabled = timeSpeedCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeSpeedCost;
+  timeUpgradePowerBtn.disabled = timePowerCount < 1 || parseInt(selectedTower.dataset.time || '0') < timePowerCost;
+  timeUpgradeRangeBtn.disabled = timeRangeCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeRangeCost;
+  timeUpgradeStarBtn.disabled = starUpgradeCost === null || parseInt(selectedTower.dataset.time || '0') < starUpgradeCost;
   refreshGlobalUpgradeButtons();
+}
+
+function getTimeUpgradeCost(tower, type) {
+  return parseInt(tower.dataset[`${type}Upgrade`] || '0') + 1;
+}
+
+function getUpgradeTypeFromKey(key) {
+  if (key === 'towerSpeed') return 'speed';
+  if (key === 'towerPower') return 'power';
+  if (key === 'towerRange') return 'range';
+  return '';
+}
+
+function getSelectedTimeUpgradeCount(type) {
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  const amount = selectedUpgradeAmounts[amountKey] || '1';
+  if (amount === 'max') return getMaxAffordableTimeUpgradeCount(type);
+  return parseInt(amount);
+}
+
+function getTimeUpgradeCostForCount(tower, type, count) {
+  const currentLevel = parseInt(tower.dataset[`${type}Upgrade`] || '0');
+  let totalCost = 0;
+
+  for (let i = 0; i < count; i += 1) {
+    totalCost += currentLevel + i + 1;
+  }
+
+  return totalCost;
+}
+
+function getMaxAffordableTimeUpgradeCount(type) {
+  if (!selectedTower) return 0;
+
+  let count = 0;
+  let totalCost = 0;
+  const currentTime = parseInt(selectedTower.dataset.time || '0');
+  const currentLevel = parseInt(selectedTower.dataset[`${type}Upgrade`] || '0');
+
+  while (count < 10000) {
+    const nextCost = currentLevel + count + 1;
+    if (totalCost + nextCost > currentTime) break;
+    totalCost += nextCost;
+    count += 1;
+  }
+
+  return count;
+}
+
+function getTimeUpgradeAmountLabel(type) {
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  const amount = selectedUpgradeAmounts[amountKey] || '1';
+  if (amount !== 'max') return `x${amount}`;
+  return `max x${getMaxAffordableTimeUpgradeCount(type)}`;
+}
+
+function getTowerStarUpgradeCost(tower) {
+  const nextStar = parseInt(tower.dataset.star || '1') + 1;
+  return TOWER_STAR_UPGRADE_COSTS[nextStar] || null;
+}
+
+function getTowerStarUpgradeText(tower) {
+  const nextStar = parseInt(tower.dataset.star || '1') + 1;
+  const cost = TOWER_STAR_UPGRADE_COSTS[nextStar];
+  if (!cost) return '최대 성급';
+  return `${nextStar}성으로 업그레이드 ${cost} T`;
+}
+
+function refreshEquipmentSlots() {
+  if (!selectedTower) return;
+
+  const equipment = getTowerEquipment(selectedTower);
+  const upgradeTotal = getTowerUpgradeTotal(selectedTower);
+  [...equipmentSlots.querySelectorAll('.equipment-slot')].forEach(slot => {
+    const slotIndex = parseInt(slot.dataset.slot);
+    const unlockLevel = EQUIPMENT_SLOT_UNLOCK_LEVELS[slotIndex];
+    const equipped = equipment[slotIndex];
+    const locked = upgradeTotal < unlockLevel;
+
+    slot.classList.toggle('locked', locked);
+    slot.classList.toggle('filled', !!equipped);
+    slot.innerHTML = '';
+
+    if (locked) {
+      slot.innerHTML = `<span>${unlockLevel}Lv 잠금</span>`;
+      return;
+    }
+
+    if (equipped) {
+      slot.innerHTML = getEquipmentHtml(equipped);
+      return;
+    }
+
+    slot.innerHTML = '<span>빈 슬롯</span>';
+  });
+}
+
+function equipDraggedEquipment(slotIndex) {
+  if (!selectedTower || !draggedEquipment) return;
+  if (getTowerUpgradeTotal(selectedTower) < EQUIPMENT_SLOT_UNLOCK_LEVELS[slotIndex]) return;
+
+  const equipment = getTowerEquipment(selectedTower);
+  if (equipment[slotIndex]) return;
+
+  equipment[slotIndex] = {
+    id: parseInt(draggedEquipment.dataset.id),
+    type: draggedEquipment.dataset.type,
+    value: parseInt(draggedEquipment.dataset.value)
+  };
+
+  setTowerEquipment(selectedTower, equipment);
+  draggedEquipment.remove();
+  draggedEquipment = null;
+  refreshUpgradeUi();
+}
+
+function unequipEquipment(slotIndex) {
+  if (!selectedTower) return;
+
+  const equipment = getTowerEquipment(selectedTower);
+  const equipped = equipment[slotIndex];
+  if (!equipped) return;
+
+  equipment[slotIndex] = null;
+  setTowerEquipment(selectedTower, equipment);
+  addEquipmentToInventory(equipped);
+  refreshUpgradeUi();
+}
+
+function releaseTowerEquipment(tower) {
+  getTowerEquipment(tower).forEach(equipment => {
+    if (equipment) addEquipmentToInventory(equipment);
+  });
+  setTowerEquipment(tower, [null, null, null]);
 }
 
 function upgradeSelectedTower(type) {
   if (!selectedTower || !document.body.contains(selectedTower)) return;
 
-  const cost = getUpgradeCost(selectedTower, type);
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  const count = getSelectedUpgradeCount(amountKey);
+  const cost = getSelectedUpgradeCost(amountKey);
+  if (count < 1) return;
   if (coins < cost) return;
 
   coins -= cost;
-  coinBar.textContent = `${coins} $`;
   const key = `${type}Upgrade`;
-  selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + 1}`;
+  selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
+  refreshUpgradeUi();
+}
+
+function upgradeSelectedTowerWithTime(type) {
+  if (!selectedTower || !document.body.contains(selectedTower)) return;
+
+  const count = getSelectedTimeUpgradeCount(type);
+  const cost = getTimeUpgradeCostForCount(selectedTower, type, count);
+  const currentTime = parseInt(selectedTower.dataset.time || '0');
+  if (count < 1) return;
+  if (currentTime < cost) return;
+
+  selectedTower.dataset.time = `${currentTime - cost}`;
+  const key = `${type}Upgrade`;
+  selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
+  refreshUpgradeUi();
+}
+
+function upgradeSelectedTowerStarWithTime() {
+  if (!selectedTower || !document.body.contains(selectedTower)) return;
+
+  const currentStar = parseInt(selectedTower.dataset.star || '1');
+  const nextStar = currentStar + 1;
+  const cost = TOWER_STAR_UPGRADE_COSTS[nextStar];
+  const currentTime = parseInt(selectedTower.dataset.time || '0');
+  if (!cost || currentTime < cost) return;
+
+  selectedTower.dataset.time = `${currentTime - cost}`;
+  selectedTower.dataset.star = `${nextStar}`;
+  selectedTower.classList.remove('star-1', 'star-2', 'star-3', 'star-4', 'star-5');
+  selectedTower.classList.add(`star-${nextStar}`);
+  selectedTower.innerHTML = getTowerHtml(
+    parseInt(selectedTower.dataset.lv),
+    nextStar,
+    selectedTower.dataset.attribute || 'none'
+  );
   refreshUpgradeUi();
 }
 
 function upgradeGlobalTowerStat(type) {
-  const cost = getGlobalUpgradeCost(type);
+  const amountKey = type === 'speed' ? 'globalSpeed' : type === 'power' ? 'globalPower' : 'globalRange';
+  const count = getSelectedUpgradeCount(amountKey);
+  const cost = getSelectedUpgradeCost(amountKey);
+  if (count < 1) return;
   if (coins < cost) return;
 
   coins -= cost;
-  coinBar.textContent = `${coins} $`;
 
-  if (type === 'speed') globalSpeedUpgrade += 1;
-  if (type === 'power') globalPowerUpgrade += 1;
-  if (type === 'range') globalRangeUpgrade += 1;
+  if (type === 'speed') globalSpeedUpgrade += count;
+  if (type === 'power') globalPowerUpgrade += count;
+  if (type === 'range') globalRangeUpgrade += count;
 
   refreshUpgradeUi();
 }
 
 function upgradeCastleHealth() {
-  const cost = getCastleHealthUpgradeCost();
+  const count = getSelectedUpgradeCount('castleHealth');
+  const cost = getSelectedUpgradeCost('castleHealth');
+  if (count < 1) return;
   if (coins < cost) return;
 
   coins -= cost;
-  coinBar.textContent = `${coins} $`;
-  castleHealthUpgrade += 1;
+  castleHealthUpgrade += count;
   maxHealth = BASE_CASTLE_HEALTH + castleHealthUpgrade * 250;
-  health = Math.min(maxHealth, health + 250);
+  health = Math.min(maxHealth, health + 250 * count);
   updateHealthText();
   refreshUpgradeUi();
 }
 
+function upgradeTowerLimit() {
+  const count = getSelectedUpgradeCount('towerLimit');
+  const cost = getSelectedUpgradeCost('towerLimit');
+  if (count < 1) return;
+  if (coins < cost) return;
+
+  coins -= cost;
+  towerLimitUpgrade += count;
+  towerLimit += count;
+  refreshUpgradeUi();
+}
+
 function recoverCastleHealth() {
+  if (isGamePaused) return;
   if (health >= maxHealth) return;
 
   health = Math.min(maxHealth, health + maxHealth * 0.01);
@@ -413,7 +910,6 @@ function spawnBtn() {
   const cost = getTowerCreateCost();
   if (coins>=cost) {
     coins-=cost;
-    coinBar.textContent = `${coins} $`;
     spawnTower(spawnLv);
     refreshUpgradeUi();
   }
@@ -446,12 +942,87 @@ function makeDraggable(elem) {
       const draggedAttribute = draggedTower.dataset.attribute || 'none';
       const targetAttribute = elem.dataset.attribute || 'none';
       const resultAttribute = getMergedTowerAttribute(draggedAttribute, targetAttribute);
+      releaseTowerEquipment(draggedTower);
+      releaseTowerEquipment(elem);
+      if (draggedTower === selectedTower || elem === selectedTower) closeUpgradeModal();
       draggedTower.remove();
       elem.remove();
 
       spawnTower(draggedLv+1, resultStar, resultAttribute);
     }
   });
+}
+
+function makeEquipmentDraggable(elem) {
+  elem.addEventListener('dragstart', e => {
+    draggedEquipment = elem;
+    draggedTower = null;
+  });
+
+  elem.addEventListener('dragend', e => {
+    draggedEquipment = null;
+  });
+
+  elem.addEventListener('dragover', e => {
+    if (draggedEquipment && draggedEquipment !== elem) e.preventDefault();
+  });
+
+  elem.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!draggedEquipment || draggedEquipment === elem) return;
+    mergeEquipment(draggedEquipment, elem);
+  });
+}
+
+function getEquipmentFromElement(elem) {
+  return {
+    id: parseInt(elem.dataset.id),
+    type: elem.dataset.type,
+    value: parseInt(elem.dataset.value)
+  };
+}
+
+function mergeEquipment(firstElem, secondElem) {
+  if (!firstElem.classList.contains('equipment') || !secondElem.classList.contains('equipment')) return;
+  if (firstElem.dataset.type !== secondElem.dataset.type) return;
+
+  const mergedEquipment = createMergedEquipment(
+    getEquipmentFromElement(firstElem),
+    getEquipmentFromElement(secondElem)
+  );
+
+  firstElem.remove();
+  secondElem.remove();
+  draggedEquipment = null;
+  addEquipmentToInventory(mergedEquipment);
+  setInventoryView('item');
+}
+
+function setInventoryView(view) {
+  inventoryView = view;
+  updateInventoryView();
+}
+
+function updateInventoryView() {
+  const showTowers = inventoryView === 'tower';
+  let visibleCount = 0;
+
+  towerViewBtn.classList.toggle('active', showTowers);
+  itemViewBtn.classList.toggle('active', !showTowers);
+
+  [...createBar.querySelectorAll('.tower')].forEach(tower => {
+    if (board.contains(tower)) return;
+    tower.classList.toggle('hidden-inventory', !showTowers);
+    if (showTowers) visibleCount += 1;
+  });
+
+  [...createBar.querySelectorAll('.equipment')].forEach(equipment => {
+    equipment.classList.toggle('hidden-inventory', showTowers);
+    if (!showTowers) visibleCount += 1;
+  });
+
+  inventoryEmpty.textContent = showTowers ? '대기 중인 포탑이 없습니다' : '보유 중인 아이템이 없습니다';
+  inventoryEmpty.classList.toggle('hidden-inventory', visibleCount > 0);
 }
 
 function getMergedTowerAttribute(firstAttribute, secondAttribute) {
@@ -473,6 +1044,12 @@ function move(from, to) {
     if (!draggedTower) return;
 
     if (from.contains(draggedTower)) {
+      if (to === board && getInstalledTowerCount() >= towerLimit) {
+        draggedTower = null;
+        refreshUpgradeUi();
+        return;
+      }
+
       const x = e.clientX;
       const y = e.clientY;
 
@@ -503,6 +1080,8 @@ function move(from, to) {
 
       makeDraggable(div);
       to.appendChild(div);
+      updateInventoryView();
+      refreshUpgradeUi();
     }
 
     draggedTower = null;
@@ -512,6 +1091,24 @@ function move(from, to) {
 
 board.addEventListener('drop', move(createBar, board));
 createBar.addEventListener('drop', move(board, createBar));
+
+equipmentSlots.addEventListener('dragover', e => {
+  if (draggedEquipment) e.preventDefault();
+});
+
+equipmentSlots.addEventListener('drop', e => {
+  e.preventDefault();
+  const slot = e.target.closest('.equipment-slot');
+  if (!slot) return;
+  equipDraggedEquipment(parseInt(slot.dataset.slot));
+});
+
+equipmentSlots.addEventListener('click', e => {
+  e.stopPropagation();
+  const slot = e.target.closest('.equipment-slot');
+  if (!slot || slot.classList.contains('locked')) return;
+  unequipEquipment(parseInt(slot.dataset.slot));
+});
 
 function fireBullet(fromTower, toEnemy) {
   if (fromTower.dataset.attacking === 'true') return;
@@ -534,6 +1131,8 @@ function fireBullet(fromTower, toEnemy) {
   document.body.appendChild(bullet);
 
   const interval = setInterval(() => {
+    if (isGamePaused) return;
+
     const bulletX = bullet.offsetLeft;
     const bulletY = bullet.offsetTop;
     const targetX = toEnemy.element.offsetLeft + 40;
@@ -563,7 +1162,14 @@ function fireBullet(fromTower, toEnemy) {
   }, 16);
 }
 
-function damageEnemy(enemy, damage) {
+function addTowerTime(tower, amount) {
+  if (!tower || !document.body.contains(tower)) return;
+
+  tower.dataset.time = `${parseInt(tower.dataset.time || '0') + amount}`;
+  if (tower === selectedTower) refreshUpgradeModal();
+}
+
+function damageEnemy(enemy, damage, sourceTower = null) {
   if (!enemy || !document.body.contains(enemy.element)) return;
 
   enemy.hp -= Math.floor(damage);
@@ -571,8 +1177,9 @@ function damageEnemy(enemy, damage) {
 
   if (enemy.hp <= 0) {
     if (document.body.contains(enemy.element)) enemy.element.remove();
+    addTowerTime(sourceTower, parseInt(enemy.element.dataset.lv || enemy.lv || '0'));
     coins += parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv);
-    coinBar.textContent = `${coins} $`;
+    if (Math.random() < 0.1) spawnEquipment();
     refreshUpgradeUi();
     const idx = enemies.indexOf(enemy)
     if (idx!=-1) enemies.splice(idx, 1);
@@ -584,61 +1191,68 @@ function applyTowerHit(fromTower, targetEnemy) {
   const baseDamage = getTowerDamage(fromTower);
 
   if (attribute === 'bomb') {
-    applyBombDamage(targetEnemy, baseDamage * 0.7);
+    applyBombDamage(targetEnemy, baseDamage * 0.7, fromTower);
     return;
   }
 
-  damageEnemy(targetEnemy, baseDamage);
+  damageEnemy(targetEnemy, baseDamage, fromTower);
 
   if (attribute === 'water' && document.body.contains(targetEnemy.element)) {
     targetEnemy.element.dataset.slowUntil = `${Date.now() + 3000}`;
   }
 
+  if (attribute === 'wall' && document.body.contains(targetEnemy.element)) {
+    targetEnemy.element.dataset.stopUntil = `${Date.now() + 3000}`;
+  }
+
   if (attribute === 'fire' && document.body.contains(targetEnemy.element)) {
-    applyFireDamage(targetEnemy, baseDamage);
+    applyFireDamage(targetEnemy, baseDamage, fromTower);
   }
 
   if (attribute === 'ball' && document.body.contains(targetEnemy.element)) {
-    promoteEnemyToFourStar(targetEnemy);
+    promoteEnemyToThreeStar(targetEnemy);
   }
 }
 
-function promoteEnemyToFourStar(enemy) {
-  if (enemy.star >= 4 || !document.body.contains(enemy.element)) return;
+function promoteEnemyToThreeStar(enemy) {
+  if (enemy.star >= 3 || !document.body.contains(enemy.element)) return;
+  if (Math.random() >= 0.1) return;
 
   const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star);
-  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(4);
+  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3);
 
-  enemy.star = 4;
+  enemy.star = 3;
   enemy.hp += newMaxHp - oldMaxHp;
-  enemy.castleDamage = enemy.lv * getEnemyStarDamageMultiplier(4);
-  enemy.element.classList.remove('star-1', 'star-2', 'star-3');
-  enemy.element.classList.add('star-4');
-  enemy.element.dataset.star = '4';
+  enemy.castleDamage = enemy.lv * getEnemyStarDamageMultiplier(3);
+  enemy.element.classList.remove('star-1', 'star-2', 'star-4');
+  enemy.element.classList.add('star-3');
+  enemy.element.dataset.star = '3';
   enemy.element.dataset.castleDamage = enemy.castleDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
 }
 
-function applyFireDamage(enemy, baseDamage) {
+function applyFireDamage(enemy, baseDamage, fromTower) {
   let ticks = 0;
   const fireInterval = setInterval(() => {
+    if (isGamePaused) return;
+
     if (!document.body.contains(enemy.element)) {
       clearInterval(fireInterval);
       return;
     }
 
     ticks += 1;
-    damageEnemy(enemy, baseDamage * 0.25);
+    damageEnemy(enemy, baseDamage * 0.25, fromTower);
 
     if (ticks >= 3) clearInterval(fireInterval);
   }, 1000 / gameSpeed);
 }
 
-function applyBombDamage(targetEnemy, damage) {
+function applyBombDamage(targetEnemy, damage, fromTower) {
   const targetRect = targetEnemy.element.getBoundingClientRect();
   const targetX = targetRect.left + targetRect.width / 2;
   const targetY = targetRect.top + targetRect.height / 2;
-  const bombRange = 130;
+  const bombRange = getBombRange(fromTower);
 
   [...enemies].forEach(enemy => {
     if (!document.body.contains(enemy.element)) return;
@@ -650,11 +1264,13 @@ function applyBombDamage(targetEnemy, damage) {
     const dy = targetY - enemyY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist <= bombRange) damageEnemy(enemy, damage);
+    if (dist <= bombRange) damageEnemy(enemy, damage, fromTower);
   });
 }
 
 function towerAttackLoop() {
+  if (isGamePaused) return;
+
   const towers = document.querySelectorAll('.tower');
   const now = Date.now();
   towers.forEach(tower => {
@@ -680,13 +1296,21 @@ function towerAttackLoop() {
   });
 }
 
+function towerTimeLoop() {
+  if (isGamePaused) return;
+
+  board.querySelectorAll('.tower').forEach(tower => {
+    addTowerTime(tower, 1);
+  });
+}
+
 function getTowerCreateCost() {
   return Math.ceil(Math.pow(spawnLv, 2.6));
 }
 
 function updateSpeedModeButton() {
-  speedModeBtn.textContent = gameSpeed === 2 ? '2배속 ON' : '2배속 OFF';
-  speedModeBtn.classList.toggle('active', gameSpeed === 2);
+  speedModeBtn.textContent = `${gameSpeed}배속`;
+  speedModeBtn.classList.toggle('active', gameSpeed !== 1);
 }
 
 function resetGameIntervals() {
@@ -694,30 +1318,36 @@ function resetGameIntervals() {
   if (towerAttackInterval) clearInterval(towerAttackInterval);
   if (castleRecoverInterval) clearInterval(castleRecoverInterval);
   if (survivalTimerInterval) clearInterval(survivalTimerInterval);
+  if (towerTimeInterval) clearInterval(towerTimeInterval);
 
   enemySpawnInterval = setInterval(spawnEnemy, 2500 / gameSpeed);
   towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
   castleRecoverInterval = setInterval(recoverCastleHealth, 1000 / gameSpeed);
+  towerTimeInterval = setInterval(towerTimeLoop, 1000 / gameSpeed);
   survivalTimerInterval = setInterval(() => {
+    if (isGamePaused) return;
+
     survivedSeconds += 1;
-    updateSurvivalTime();
-  }, 1000);
+    updateTopStatus();
+  }, 1000 / gameSpeed);
 }
 
 function toggleSpeedMode() {
-  gameSpeed = gameSpeed === 1 ? 2 : 1;
+  if (gameSpeed === 1) gameSpeed = 2;
+  else if (gameSpeed === 2) gameSpeed = 5;
+  else gameSpeed = 1;
   updateSpeedModeButton();
   resetGameIntervals();
 }
 
 
 function upgradeCreate() {
-  const cost = Math.pow(spawnLv, 4)*5;
+  const count = getSelectedUpgradeCount('create');
+  const cost = getSelectedUpgradeCost('create');
+  if (count < 1) return;
   if ( coins >= cost ) {
     coins -= cost;
-    spawnLv += 1;
-    coinBar.textContent = `${coins} $`;
-    upgradeBtn.textContent = `생성 단계 향상 ${Math.pow(spawnLv, 4)*5} $`;
+    spawnLv += count;
     spawnLvExpress.textContent = `${spawnLv} 생성`;
     priceBar.textContent = `${getTowerCreateCost()} $`
     refreshUpgradeUi();
@@ -732,14 +1362,30 @@ board.addEventListener('click', closeUpgradeModal);
 upgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTower('speed'));
 upgradePowerBtn.addEventListener('click', () => upgradeSelectedTower('power'));
 upgradeRangeBtn.addEventListener('click', () => upgradeSelectedTower('range'));
+timeUpgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('speed'));
+timeUpgradePowerBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('power'));
+timeUpgradeRangeBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('range'));
+timeUpgradeStarBtn.addEventListener('click', upgradeSelectedTowerStarWithTime);
 globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
 globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
 globalRangeBtn.addEventListener('click', () => upgradeGlobalTowerStat('range'));
 castleHealthBtn.addEventListener('click', upgradeCastleHealth);
+towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
+towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
+itemViewBtn.addEventListener('click', () => setInventoryView('item'));
+setupUpgradeAmountControls(upgradeBtn, 'create');
+setupUpgradeAmountControls(globalSpeedBtn, 'globalSpeed');
+setupUpgradeAmountControls(globalPowerBtn, 'globalPower');
+setupUpgradeAmountControls(globalRangeBtn, 'globalRange');
+setupUpgradeAmountControls(castleHealthBtn, 'castleHealth');
+setupUpgradeAmountControls(towerLimitBtn, 'towerLimit');
+setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
+setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
+setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
 updateHealthText();
-updateSurvivalTime();
 updateSpeedModeButton();
 priceBar.textContent = `${getTowerCreateCost()} $`;
-refreshGlobalUpgradeButtons();
+refreshUpgradeUi();
+updateInventoryView();
 resetGameIntervals();

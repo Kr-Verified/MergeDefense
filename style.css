@@ -63,6 +63,29 @@ body {
   overflow-y: auto;
 }
 
+#inventory-toggle {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.inventory-tab {
+  min-width: 82px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  background-color: rgba(255, 255, 255, 0.08);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.inventory-tab.active {
+  color: #172033;
+  background: linear-gradient(180deg, #ffe066, #ffd43b);
+}
+
 #btn-bar {
   width: 100%;
   min-height: 72px;
@@ -70,6 +93,54 @@ body {
   flex-wrap: wrap;
   gap: 12px;
   align-items: stretch;
+}
+
+.upgrade-button-wrap {
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.upgrade-button-wrap > .btn {
+  width: 100%;
+  min-width: 0;
+  flex: none;
+}
+
+.upgrade-amount-controls {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+}
+
+.upgrade-amount-btn,
+.upgrade-actions .upgrade-amount-btn {
+  min-width: 42px;
+  min-height: 0;
+  height: auto;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.upgrade-amount-btn.active,
+.upgrade-actions .upgrade-amount-btn.active {
+  color: #172033;
+  background: #ffe066;
+}
+
+.upgrade-amount-btn:hover,
+.upgrade-actions .upgrade-amount-btn:hover {
+  transform: none;
 }
 
 .btn {
@@ -110,6 +181,11 @@ body {
 
 .speed-mode-btn {
   background: linear-gradient(135deg, #495057, #15aabf);
+  font-size: 14px;
+}
+
+.tower-limit-btn {
+  background: linear-gradient(135deg, #7048e8, #339af0);
   font-size: 14px;
 }
 
@@ -159,6 +235,23 @@ body {
 .tower.selected {
   outline: 3px solid gold;
   outline-offset: 5px;
+}
+
+.hidden-inventory {
+  display: none !important;
+}
+
+.inventory-empty {
+  width: 100%;
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.62);
+  background-color: rgba(255, 255, 255, 0.04);
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .tower-level {
@@ -232,6 +325,14 @@ body {
   background: #862e9c;
 }
 
+.tower-attribute-badge.attribute-power {
+  background: #f08c00;
+}
+
+.tower-attribute-badge.attribute-wall {
+  background: #795548;
+}
+
 .tower.star-2 .tower-star-badge {
   color: #06251e;
   background: linear-gradient(180deg, #a8ffe8, #45d4ad);
@@ -245,6 +346,11 @@ body {
 .tower.star-4 .tower-star-badge {
   color: #ffffff;
   background: linear-gradient(180deg, #ffd43b, #f08c00);
+}
+
+.tower.star-5 .tower-star-badge {
+  color: #ffffff;
+  background: linear-gradient(180deg, #ffffff, #4dabf7 42%, #7048e8);
 }
 
 .enemy {
@@ -307,39 +413,77 @@ body {
   color: #ff7373;
 }
 
+.equipment {
+  width: 106px;
+  height: 86px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(34, 40, 72, 0.92), rgba(14, 18, 36, 0.92));
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.equipment:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 224, 102, 0.58);
+}
+
+.equipment-name,
+.equipment-effect {
+  margin: 0;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.equipment-name {
+  color: #ffe066;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.equipment-effect {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .bullet {
   position: absolute;
   z-index: 5;
 }
 
-#coin-bar {
+#top-status {
   position: absolute;
-  top: 54px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
-  padding: 6px 18px;
+  padding: 7px 16px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
   border: 1px solid rgba(255, 215, 0, 0.36);
   border-radius: 999px;
-  color: gold;
   background-color: rgba(12, 16, 31, 0.66);
   font-weight: 900;
-  font-size: clamp(28px, 4vw, 48px);
+  font-size: clamp(15px, 2vw, 24px);
+  white-space: nowrap;
 }
 
-#survival-time {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 5px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
+#survival-time,
+#tower-count {
   color: #ffffff;
-  background-color: rgba(12, 16, 31, 0.72);
-  font-size: clamp(18px, 3vw, 32px);
-  font-weight: 900;
+}
+
+#coin-bar {
+  color: gold;
 }
 
 #name {
@@ -354,7 +498,10 @@ body {
 
 .modal {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 30vh;
+  left: 0;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -369,7 +516,7 @@ body {
 
 .modal-panel {
   position: relative;
-  width: min(430px, 94vw);
+  width: min(520px, 94vw);
   padding: 26px;
   border: 1px solid rgba(255, 215, 0, 0.58);
   border-radius: 14px;
@@ -420,6 +567,24 @@ body {
   gap: 10px;
 }
 
+.tower-upgrade-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.upgrade-actions .upgrade-button-wrap {
+  min-width: 0;
+  flex: none;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.tower-upgrade-row > button,
+.tower-upgrade-row > .upgrade-button-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
 .upgrade-actions button {
   min-height: 48px;
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -440,6 +605,57 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
+}
+
+.equipment-panel {
+  margin-top: 18px;
+}
+
+.equipment-title {
+  margin-bottom: 8px;
+  color: #ffe066;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.equipment-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.equipment-slot {
+  min-height: 82px;
+  padding: 8px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  background-color: rgba(255, 255, 255, 0.05);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.equipment-slot.filled {
+  border-style: solid;
+  border-color: rgba(255, 224, 102, 0.72);
+  cursor: pointer;
+}
+
+.equipment-slot.locked {
+  border-color: rgba(255, 100, 100, 0.28);
+  color: rgba(255, 180, 180, 0.68);
+  background-color: rgba(120, 20, 20, 0.14);
+}
+
+.equipment-slot .equipment-name {
+  font-size: 14px;
+}
+
+.equipment-slot .equipment-effect {
+  font-size: 11px;
 }
 
 @media (max-width: 720px) {

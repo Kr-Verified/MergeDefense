@@ -9,13 +9,20 @@
 <body>
   <div id="game-board">
     <p id="name">Guest</p>
-    <p id="survival-time">0초</p>
-    <p id="coin-bar">3 $</p>
+    <div id="top-status">
+      <span id="survival-time">0초</span>
+      <span id="coin-bar">3 $</span>
+      <span id="tower-count">0 / 10 포탑</span>
+    </div>
     <div id="defense">
       <p id="health" style="color:red; margin-bottom: 10px;">1000 Hp</p>
     </div>
   </div>
   <div id="create-bar">
+    <div id="inventory-toggle">
+      <button id="tower-view-btn" type="button" class="inventory-tab active">포탑</button>
+      <button id="item-view-btn" type="button" class="inventory-tab">아이템</button>
+    </div>
     <div id="btn-bar">
       <button id="create-btn" onclick="spawnBtn()" class="btn"><p style="margin-bottom: 0;" id="spawnLv">1 생성</p><span style="font-size: 50%; position: relative; top:-10%" id="price">1 $</span></button>
       <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
@@ -23,8 +30,10 @@
       <button id="global-power-btn" type="button" class="btn global-upgrade-btn">전체 힘 향상</button>
       <button id="global-range-btn" type="button" class="btn global-upgrade-btn">전체 범위 향상</button>
       <button id="castle-health-btn" type="button" class="btn castle-upgrade-btn">성 체력 향상</button>
-      <button id="speed-mode-btn" type="button" class="btn speed-mode-btn">2배속 OFF</button>
+      <button id="tower-limit-btn" type="button" class="btn tower-limit-btn">설치 최대치 +1</button>
+      <button id="speed-mode-btn" type="button" class="btn speed-mode-btn">1배속</button>
     </div>
+    <div id="inventory-empty" class="inventory-empty hidden-inventory">비어 있음</div>
   </div>
   <div id="upgrade-modal" class="modal hidden">
     <div class="modal-panel">
@@ -36,11 +45,30 @@
         <p id="tower-damage">공격 힘: 10</p>
         <p id="tower-speed">공격 속도: 1.00초</p>
         <p id="tower-range">공격 범위: 400</p>
+        <p id="tower-time">타임: 0</p>
       </div>
       <div class="upgrade-actions">
-        <button id="upgrade-speed-btn" type="button">공격 속도 향상</button>
-        <button id="upgrade-power-btn" type="button">공격 힘 향상</button>
-        <button id="upgrade-range-btn" type="button">공격 범위 향상</button>
+        <div class="tower-upgrade-row">
+          <button id="upgrade-speed-btn" type="button">공격 속도 향상</button>
+          <button id="time-upgrade-speed-btn" type="button">타임 속도 향상</button>
+        </div>
+        <div class="tower-upgrade-row">
+          <button id="upgrade-power-btn" type="button">공격 힘 향상</button>
+          <button id="time-upgrade-power-btn" type="button">타임 힘 향상</button>
+        </div>
+        <div class="tower-upgrade-row">
+          <button id="upgrade-range-btn" type="button">공격 범위 향상</button>
+          <button id="time-upgrade-range-btn" type="button">타임 범위 향상</button>
+        </div>
+        <button id="time-upgrade-star-btn" type="button">2성으로 업그레이드</button>
+      </div>
+      <div class="equipment-panel">
+        <div class="equipment-title">장비</div>
+        <div id="equipment-slots" class="equipment-slots">
+          <div class="equipment-slot" data-slot="0"></div>
+          <div class="equipment-slot" data-slot="1"></div>
+          <div class="equipment-slot" data-slot="2"></div>
+        </div>
       </div>
     </div>
   </div>
