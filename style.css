@@ -266,6 +266,7 @@ body {
 .tower.installed {
   background: transparent;
   border-color: transparent;
+  z-index: 10;
 }
 
 .tower.installed:hover {
@@ -400,6 +401,7 @@ body {
 
 .enemy {
   align-items: center;
+  z-index: 2;
 }
 
 .enemy p {

@@ -1193,10 +1193,11 @@ function move(from, to) {
         div.style.position = 'absolute';
         div.style.left = `${x - 40}px`;
         div.style.top = `${y - 40}px`;
-        div.style.zIndex = '0';
+        div.style.zIndex = '10';
       } else {
         div.classList.remove('installed');
         div.style.position = 'relative'; // 기본 정렬
+        div.style.zIndex = '1';
       }
 
       makeDraggable(div);
@@ -1232,8 +1233,8 @@ equipmentSlots.addEventListener('click', e => {
 });
 
 function fireBullet(fromTower, toEnemy) {
-  if (fromTower.dataset.attacking === 'true') return;
-  fromTower.dataset.attacking = 'true';
+  if (!toEnemy || !document.body.contains(toEnemy.element)) return;
+
   const bullet = document.createElement('div');
   bullet.className = 'bullet';
   bullet.style.position = 'absolute';
@@ -1253,6 +1254,11 @@ function fireBullet(fromTower, toEnemy) {
 
   const interval = setInterval(() => {
     if (isGamePaused) return;
+    if (!document.body.contains(toEnemy.element)) {
+      clearInterval(interval);
+      bullet.remove();
+      return;
+    }
 
     const bulletX = bullet.offsetLeft;
     const bulletY = bullet.offsetTop;
@@ -1270,7 +1276,6 @@ function fireBullet(fromTower, toEnemy) {
       bullet.remove();
 
       applyTowerHit(fromTower, toEnemy);
-      fromTower.dataset.attacking = 'false';
       return;
     }
 
@@ -1422,19 +1427,27 @@ function towerAttackLoop() {
 
     const towerRect = tower.getBoundingClientRect();
     const towerRange = getTowerRange(tower);
+    let targetEnemy = null;
+    let nearestDistance = Infinity;
 
     enemies.forEach(enemy => {
-      if (tower.dataset.attacking === 'true') return;
+      if (!document.body.contains(enemy.element)) return;
+
       const enemyRect = enemy.element.getBoundingClientRect();
       const dx = (enemyRect.left + 40) - (towerRect.left + 40);
       const dy = (enemyRect.top + 40) - (towerRect.top + 40);
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist < towerRange) {
-        tower.dataset.lastAttack = `${now}`;
-        fireBullet(tower, enemy);
+      if (dist < towerRange && dist < nearestDistance) {
+        targetEnemy = enemy;
+        nearestDistance = dist;
       }
     });
+
+    if (targetEnemy) {
+      tower.dataset.lastAttack = `${now}`;
+      fireBullet(tower, targetEnemy);
+    }
   });
 }
 
