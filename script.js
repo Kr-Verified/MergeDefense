@@ -29,6 +29,8 @@ const towerCountBar = document.getElementById('tower-count');
 const globalSpeedBtn = document.getElementById('global-speed-btn');
 const globalPowerBtn = document.getElementById('global-power-btn');
 const globalRangeBtn = document.getElementById('global-range-btn');
+const criticalChanceBtn = document.getElementById('critical-chance-btn');
+const criticalDamageBtn = document.getElementById('critical-damage-btn');
 const castleHealthBtn = document.getElementById('castle-health-btn');
 const towerLimitBtn = document.getElementById('tower-limit-btn');
 const speedModeBtn = document.getElementById('speed-mode-btn');
@@ -46,6 +48,8 @@ const selectedUpgradeAmounts = {
   globalSpeed: '1',
   globalPower: '1',
   globalRange: '1',
+  criticalChance: '1',
+  criticalDamage: '1',
   castleHealth: '1',
   towerLimit: '1',
   towerSpeed: '1',
@@ -57,6 +61,8 @@ let maxHealth = 1000;
 let globalSpeedUpgrade = 0;
 let globalPowerUpgrade = 0;
 let globalRangeUpgrade = 0;
+let criticalChanceUpgrade = 0;
+let criticalDamageUpgrade = 0;
 let castleHealthUpgrade = 0;
 let towerLimitUpgrade = 0;
 let towerLimit = 10;
@@ -75,6 +81,9 @@ const BASE_ATTACK_INTERVAL = 1000;
 const BASE_ATTACK_RANGE = 400;
 const MIN_ATTACK_INTERVAL = 250;
 const BASE_CASTLE_HEALTH = 1000;
+const BASE_CRITICAL_CHANCE = 0.1;
+const BASE_CRITICAL_DAMAGE_MULTIPLIER = 2;
+const MAX_CRITICAL_CHANCE = 1;
 const TOWER_STAR_UPGRADE_COSTS = {
   2: 50,
   3: 300,
@@ -102,6 +111,16 @@ const EQUIPMENT_TYPES = {
     name: '무게추',
     stat: 'splash',
     description: '범위공격'
+  },
+  needle: {
+    name: '바늘',
+    stat: 'critChance',
+    description: '치명확률'
+  },
+  hammer: {
+    name: '망치',
+    stat: 'critDamage',
+    description: '치명피해'
   }
 };
 
@@ -132,7 +151,7 @@ function getRandomEnemyStar() {
 }
 
 function getRandomTowerAttribute() {
-  if (Math.random() >= 0.2) return 'none';
+  if (Math.random() >= 0.4) return 'none';
   const attributes = ['water', 'fire', 'bomb', 'ball', 'power', 'wall', 'blood'];
   return attributes[Math.floor(Math.random() * attributes.length)];
 }
@@ -175,10 +194,12 @@ function getAttributeText(attribute) {
 function createEquipment() {
   const types = Object.keys(EQUIPMENT_TYPES);
   const type = types[Math.floor(Math.random() * types.length)];
+  const minValue = type === 'needle' ? 3 : 3;
+  const maxValue = type === 'needle' ? 10 : 45;
   return {
     id: equipmentId++,
     type: type,
-    value: Math.floor(Math.random() * 43) + 3
+    value: Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue
   };
 }
 
@@ -449,6 +470,19 @@ function getBombRange(tower) {
   return Math.floor(130 * (1 + getEquipmentBonus(tower, 'splash')));
 }
 
+function getCriticalChance(tower) {
+  return Math.min(MAX_CRITICAL_CHANCE, BASE_CRITICAL_CHANCE + criticalChanceUpgrade * 0.01 + getEquipmentBonus(tower, 'critChance'));
+}
+
+function getCriticalDamageMultiplier(tower) {
+  return BASE_CRITICAL_DAMAGE_MULTIPLIER + criticalDamageUpgrade * 0.1 + getEquipmentBonus(tower, 'critDamage');
+}
+
+function applyCriticalDamage(tower, damage) {
+  if (Math.random() >= getCriticalChance(tower)) return Math.floor(damage);
+  return Math.floor(damage * getCriticalDamageMultiplier(tower));
+}
+
 function getUpgradeCost(tower, type) {
   const lv = parseInt(tower.dataset.lv);
   const currentUpgrade = parseInt(tower.dataset[`${type}Upgrade`] || '0');
@@ -479,6 +513,8 @@ function getInstalledTowerCount() {
 function getUpgradeCostForLevel(key, level) {
   if (key === 'create') return Math.pow(level, 4) * 5;
   if (key === 'globalSpeed' || key === 'globalPower' || key === 'globalRange') return Math.pow(level + 1, 2) * 25;
+  if (key === 'criticalChance') return 8 * Math.pow(8, level);
+  if (key === 'criticalDamage') return 7 * Math.pow(7, level);
   if (key === 'castleHealth') return Math.pow(level + 1, 2) * 30;
   if (key === 'towerLimit') return 10 * Math.pow(10, level);
   if (!selectedTower) return Infinity;
@@ -492,6 +528,8 @@ function getCurrentUpgradeLevel(key) {
   if (key === 'globalSpeed') return globalSpeedUpgrade;
   if (key === 'globalPower') return globalPowerUpgrade;
   if (key === 'globalRange') return globalRangeUpgrade;
+  if (key === 'criticalChance') return criticalChanceUpgrade;
+  if (key === 'criticalDamage') return criticalDamageUpgrade;
   if (key === 'castleHealth') return castleHealthUpgrade;
   if (key === 'towerLimit') return towerLimitUpgrade;
   if (!selectedTower) return 0;
@@ -519,6 +557,7 @@ function getMaxAffordableUpgradeCount(key) {
   const currentLevel = getCurrentUpgradeLevel(key);
 
   while (count < 10000) {
+    if (count >= getRemainingUpgradeCount(key)) break;
     const nextCost = getUpgradeCostForLevel(key, currentLevel + count);
     if (totalCost + nextCost > coins) break;
     totalCost += nextCost;
@@ -531,7 +570,12 @@ function getMaxAffordableUpgradeCount(key) {
 function getSelectedUpgradeCount(key) {
   const amount = selectedUpgradeAmounts[key] || '1';
   if (amount === 'max') return getMaxAffordableUpgradeCount(key);
-  return parseInt(amount);
+  return Math.min(parseInt(amount), getRemainingUpgradeCount(key));
+}
+
+function getRemainingUpgradeCount(key) {
+  if (key === 'criticalChance') return Math.max(0, 90 - criticalChanceUpgrade);
+  return Infinity;
 }
 
 function getSelectedUpgradeCost(key) {
@@ -580,17 +624,23 @@ function refreshGlobalUpgradeButtons() {
   const speedCost = getSelectedUpgradeCost('globalSpeed');
   const powerCost = getSelectedUpgradeCost('globalPower');
   const rangeCost = getSelectedUpgradeCost('globalRange');
+  const criticalChanceCost = getSelectedUpgradeCost('criticalChance');
+  const criticalDamageCost = getSelectedUpgradeCost('criticalDamage');
   const castleHealthCost = getSelectedUpgradeCost('castleHealth');
 
   globalSpeedBtn.textContent = `전체 속도 Lv.${globalSpeedUpgrade} ${getUpgradeAmountLabel('globalSpeed')} ${speedCost} $`;
   globalPowerBtn.textContent = `전체 힘 Lv.${globalPowerUpgrade} ${getUpgradeAmountLabel('globalPower')} ${powerCost} $`;
   globalRangeBtn.textContent = `전체 범위 Lv.${globalRangeUpgrade} ${getUpgradeAmountLabel('globalRange')} ${rangeCost} $`;
+  criticalChanceBtn.textContent = `치명타 확률 ${Math.round(getCriticalChance(document.body) * 100)}% ${getUpgradeAmountLabel('criticalChance')} ${criticalChanceCost} $`;
+  criticalDamageBtn.textContent = `치명타 피해 ${(getCriticalDamageMultiplier(document.body)).toFixed(1)}배 ${getUpgradeAmountLabel('criticalDamage')} ${criticalDamageCost} $`;
   castleHealthBtn.textContent = `성 체력 Lv.${castleHealthUpgrade} ${getUpgradeAmountLabel('castleHealth')} ${castleHealthCost} $`;
   const towerLimitCost = getSelectedUpgradeCost('towerLimit');
   towerLimitBtn.textContent = `설치 최대치 ${getInstalledTowerCount()} / ${towerLimit} ${getUpgradeAmountLabel('towerLimit')} ${towerLimitCost} $`;
   globalSpeedBtn.disabled = getSelectedUpgradeCount('globalSpeed') < 1 || coins < speedCost;
   globalPowerBtn.disabled = getSelectedUpgradeCount('globalPower') < 1 || coins < powerCost;
   globalRangeBtn.disabled = getSelectedUpgradeCount('globalRange') < 1 || coins < rangeCost;
+  criticalChanceBtn.disabled = getSelectedUpgradeCount('criticalChance') < 1 || coins < criticalChanceCost;
+  criticalDamageBtn.disabled = getSelectedUpgradeCount('criticalDamage') < 1 || coins < criticalDamageCost;
   castleHealthBtn.disabled = getSelectedUpgradeCount('castleHealth') < 1 || coins < castleHealthCost;
   towerLimitBtn.disabled = getSelectedUpgradeCount('towerLimit') < 1 || coins < towerLimitCost;
   refreshUpgradeAmountControls();
@@ -868,6 +918,20 @@ function upgradeGlobalTowerStat(type) {
   if (type === 'speed') globalSpeedUpgrade += count;
   if (type === 'power') globalPowerUpgrade += count;
   if (type === 'range') globalRangeUpgrade += count;
+
+  refreshUpgradeUi();
+}
+
+function upgradeCriticalStat(type) {
+  const amountKey = type === 'chance' ? 'criticalChance' : 'criticalDamage';
+  const count = getSelectedUpgradeCount(amountKey);
+  const cost = getSelectedUpgradeCost(amountKey);
+  if (count < 1) return;
+  if (coins < cost) return;
+
+  coins -= cost;
+  if (type === 'chance') criticalChanceUpgrade += count;
+  if (type === 'damage') criticalDamageUpgrade += count;
 
   refreshUpgradeUi();
 }
@@ -1186,8 +1250,12 @@ function damageEnemy(enemy, damage, sourceTower = null) {
   if (enemy.hp <= 0) {
     if (document.body.contains(enemy.element)) enemy.element.remove();
     addTowerTime(sourceTower, parseInt(enemy.element.dataset.lv || enemy.lv || '0'));
-    coins += parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv);
-    if (Math.random() < 0.1) spawnEquipment();
+    const rewardMultiplierRoll = Math.random();
+    let rewardMultiplier = 1;
+    if (rewardMultiplierRoll < 0.02) rewardMultiplier = 20;
+    else if (rewardMultiplierRoll < 0.22) rewardMultiplier = 3;
+    coins += parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv)*rewardMultiplier;
+    if (Math.random() < 0.3) spawnEquipment();
     refreshUpgradeUi();
     const idx = enemies.indexOf(enemy)
     if (idx!=-1) enemies.splice(idx, 1);
@@ -1199,13 +1267,14 @@ function damageEnemy(enemy, damage, sourceTower = null) {
 function applyTowerHit(fromTower, targetEnemy) {
   const attribute = fromTower.dataset.attribute || 'none';
   const baseDamage = getTowerDamage(fromTower);
+  const attackDamage = applyCriticalDamage(fromTower, baseDamage);
 
   if (attribute === 'bomb') {
-    applyBombDamage(targetEnemy, baseDamage * 0.7, fromTower);
+    applyBombDamage(targetEnemy, attackDamage * 0.7, fromTower);
     return;
   }
 
-  const dealtDamage = damageEnemy(targetEnemy, baseDamage, fromTower);
+  const dealtDamage = damageEnemy(targetEnemy, attackDamage, fromTower);
 
   if (attribute === 'blood') {
     recoverCastleHealthByAmount(dealtDamage * 0.1);
@@ -1220,7 +1289,7 @@ function applyTowerHit(fromTower, targetEnemy) {
   }
 
   if (attribute === 'fire' && document.body.contains(targetEnemy.element)) {
-    applyFireDamage(targetEnemy, baseDamage, fromTower);
+    applyFireDamage(targetEnemy, attackDamage, fromTower);
   }
 
   if (attribute === 'ball' && document.body.contains(targetEnemy.element)) {
@@ -1383,6 +1452,8 @@ timeUpgradeStarBtn.addEventListener('click', upgradeSelectedTowerStarWithTime);
 globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
 globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
 globalRangeBtn.addEventListener('click', () => upgradeGlobalTowerStat('range'));
+criticalChanceBtn.addEventListener('click', () => upgradeCriticalStat('chance'));
+criticalDamageBtn.addEventListener('click', () => upgradeCriticalStat('damage'));
 castleHealthBtn.addEventListener('click', upgradeCastleHealth);
 towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
@@ -1392,6 +1463,8 @@ setupUpgradeAmountControls(upgradeBtn, 'create');
 setupUpgradeAmountControls(globalSpeedBtn, 'globalSpeed');
 setupUpgradeAmountControls(globalPowerBtn, 'globalPower');
 setupUpgradeAmountControls(globalRangeBtn, 'globalRange');
+setupUpgradeAmountControls(criticalChanceBtn, 'criticalChance');
+setupUpgradeAmountControls(criticalDamageBtn, 'criticalDamage');
 setupUpgradeAmountControls(castleHealthBtn, 'castleHealth');
 setupUpgradeAmountControls(towerLimitBtn, 'towerLimit');
 setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');

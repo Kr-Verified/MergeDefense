@@ -24,11 +24,13 @@
       <button id="item-view-btn" type="button" class="inventory-tab">아이템</button>
     </div>
     <div id="btn-bar">
-      <button id="create-btn" onclick="spawnBtn()" class="btn"><p style="margin-bottom: 0;" id="spawnLv">1 생성</p><span style="font-size: 50%; position: relative; top:-10%" id="price">1 $</span></button>
+      <button id="create-btn" onclick="spawnBtn()" class="btn"><p id="spawnLv">1 생성</p><span id="price">1 $</span></button>
       <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
       <button id="global-speed-btn" type="button" class="btn global-upgrade-btn">전체 속도 향상</button>
       <button id="global-power-btn" type="button" class="btn global-upgrade-btn">전체 힘 향상</button>
       <button id="global-range-btn" type="button" class="btn global-upgrade-btn">전체 범위 향상</button>
+      <button id="critical-chance-btn" type="button" class="btn global-upgrade-btn">치명타 확률 향상</button>
+      <button id="critical-damage-btn" type="button" class="btn global-upgrade-btn">치명타 피해 향상</button>
       <button id="castle-health-btn" type="button" class="btn castle-upgrade-btn">성 체력 향상</button>
       <button id="tower-limit-btn" type="button" class="btn tower-limit-btn">설치 최대치 +1</button>
       <button id="speed-mode-btn" type="button" class="btn speed-mode-btn">1배속</button>

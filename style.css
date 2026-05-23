@@ -90,14 +90,18 @@ body {
   width: 100%;
   min-height: 72px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
   align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
 }
 
 .upgrade-button-wrap {
-  flex: 1 1 150px;
-  min-width: 150px;
+  flex: 0 0 210px;
+  min-width: 210px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px;
@@ -144,7 +148,7 @@ body {
 }
 
 .btn {
-  flex: 1 1 150px;
+  flex: 0 0 210px;
   min-width: 150px;
   height: 66px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -160,8 +164,45 @@ body {
 }
 
 #create-btn {
+  position: relative;
   background: linear-gradient(135deg, #2b64ff, #18a0fb);
   font-size: 26px;
+}
+
+#spawnLv {
+  margin: 0;
+}
+
+#price {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 30;
+  min-width: 76px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  border-radius: 8px;
+  color: #ffe066;
+  background-color: rgba(10, 12, 24, 0.96);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#price::after {
+  content: none;
+}
+
+#create-btn:hover #price,
+#create-btn:focus-visible #price {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 #upgrade-create-btn {
@@ -669,11 +710,11 @@ body {
 
   #btn-bar {
     min-height: auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .btn {
-    flex: 1 1 160px;
+    flex: 0 0 190px;
   }
 
   .tower {
