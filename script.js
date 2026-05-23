@@ -73,6 +73,7 @@ let towerAttackInterval = null;
 let castleRecoverInterval = null;
 let survivalTimerInterval = null;
 let towerTimeInterval = null;
+let bossRecoverInterval = null;
 let survivedSeconds = 0;
 const enemies = [];
 const spawnedLimitedEnemyLevels = new Set();
@@ -170,6 +171,11 @@ function getEnemyStarDamageMultiplier(star) {
 
 function getEnemyStarHealthMultiplier(star) {
   return getEnemyStarDamageMultiplier(star);
+}
+
+function getEnemyCastleDamage(lv, star) {
+  const bossMultiplier = lv%5==0 ? 10 : 1;
+  return lv * getEnemyStarDamageMultiplier(star) * bossMultiplier;
 }
 
 function getTowerStarDamageMultiplier(star) {
@@ -327,7 +333,8 @@ function createEnemy(lv, star = getRandomEnemyStar()) {
     lv: lv,
     star: star,
     hp: hp,
-    castleDamage: lv * getEnemyStarDamageMultiplier(star),
+    maxHp: hp,
+    castleDamage: getEnemyCastleDamage(lv, star),
     element: null
   }
 }
@@ -347,7 +354,7 @@ function getEnemyHtml(enemy) {
       <img src="./enemyImg/${enemy.lv}.png" width="${size}px" alt="${enemy.lv} Lv enemy">
       <span class="enemy-star-badge">${stars}</span>
     </div>
-    <p class="enemy-hp">${enemy.hp} Hp</p>
+    <p class="enemy-hp">${Math.ceil(enemy.hp)} Hp</p>
     <p class="enemy-damage">성 공격 ${enemy.castleDamage}</p>
   `;
 }
@@ -377,6 +384,7 @@ function spawnEnemy() {
   div.dataset.id = enemy.id;
   div.dataset.lv = enemy.lv;
   div.dataset.star = enemy.star;
+  div.dataset.maxHp = enemy.maxHp;
   div.dataset.castleDamage = enemy.castleDamage;
   div.dataset.lastCastleAttack = '0';
 
@@ -418,8 +426,9 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       updateHealthText();
     }else {
     // 방향 벡터 단위화 후 이동
-    if (parseInt(enemyDiv.dataset.lv)%4==0) speed = 2.3;
-    if (parseInt(enemyDiv.dataset.lv)%5==0) speed *= 0.5;
+    const enemyLv = parseInt(enemyDiv.dataset.lv);
+    speed = enemyLv%5==0 ? 0.8 : 1.5;
+    if (enemyLv%4==0 && enemyLv%5!=0) speed = 2.3;
     if (Date.now() < parseInt(enemyDiv.dataset.stopUntil || '0')) return;
     const slowMultiplier = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0') ? 0.5 : 1;
     const vx = (dx / dist) * speed * gameSpeed * slowMultiplier;
@@ -1354,10 +1363,12 @@ function promoteEnemyToThreeStar(enemy) {
 
   enemy.star = 3;
   enemy.hp += newMaxHp - oldMaxHp;
-  enemy.castleDamage = enemy.lv * getEnemyStarDamageMultiplier(3);
+  enemy.maxHp = newMaxHp;
+  enemy.castleDamage = getEnemyCastleDamage(enemy.lv, 3);
   enemy.element.classList.remove('star-1', 'star-2', 'star-4');
   enemy.element.classList.add('star-3');
   enemy.element.dataset.star = '3';
+  enemy.element.dataset.maxHp = enemy.maxHp;
   enemy.element.dataset.castleDamage = enemy.castleDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
 }
@@ -1435,6 +1446,17 @@ function towerTimeLoop() {
   });
 }
 
+function bossRecoverLoop() {
+  if (isGamePaused) return;
+
+  enemies.forEach(enemy => {
+    if (enemy.lv%5!=0 || !document.body.contains(enemy.element)) return;
+
+    enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.01);
+    enemy.element.innerHTML = getEnemyHtml(enemy);
+  });
+}
+
 function getTowerCreateCost() {
   return Math.ceil(Math.pow(spawnLv, 2.6));
 }
@@ -1450,11 +1472,13 @@ function resetGameIntervals() {
   if (castleRecoverInterval) clearInterval(castleRecoverInterval);
   if (survivalTimerInterval) clearInterval(survivalTimerInterval);
   if (towerTimeInterval) clearInterval(towerTimeInterval);
+  if (bossRecoverInterval) clearInterval(bossRecoverInterval);
 
-  enemySpawnInterval = setInterval(spawnEnemy, 2500 / gameSpeed);
+  enemySpawnInterval = setInterval(spawnEnemy, 5000 / gameSpeed);
   towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
   castleRecoverInterval = setInterval(recoverCastleHealth, 1000 / gameSpeed);
   towerTimeInterval = setInterval(towerTimeLoop, 1000 / gameSpeed);
+  bossRecoverInterval = setInterval(bossRecoverLoop, 1000 / gameSpeed);
   survivalTimerInterval = setInterval(() => {
     if (isGamePaused) return;
 
