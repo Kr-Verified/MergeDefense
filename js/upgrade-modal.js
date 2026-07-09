@@ -176,17 +176,14 @@ function closeUpgradeModal() {
   upgradeModal.classList.add('hidden');
 }
 
-function getTowerSellPrice(tower) {
-  const lv = parseInt(tower.dataset.lv || '1');
-  return lv * lv;
-}
-
-function sellSelectedTower() {
+function deleteSelectedTower() {
   if (!selectedTower) return;
 
-  coins += getTowerSellPrice(selectedTower);
-  selectedTower.remove();
-  closeUpgradeModal();
+  const cost = getTowerDeleteCost(selectedTower);
+  if (coins < cost) return;
+
+  coins -= cost;
+  destroyTower(selectedTower);
   updateInventoryView();
   refreshUpgradeUi();
   updateTopStatus();
@@ -208,7 +205,9 @@ function refreshUpgradeModal() {
   towerRangeText.textContent = `공격 범위: ${getTowerRange(selectedTower)}`;
   towerHpText.textContent = `체력: ${parseInt(selectedTower.dataset.hp || '0')} / ${parseInt(selectedTower.dataset.maxHp || '0')}${Date.now() < parseInt(selectedTower.dataset.stunUntil || '0') ? ' (기절)' : ''}`;
   towerTimeText.textContent = `타임: ${parseInt(selectedTower.dataset.time || '0')}`;
-  sellTowerBtn.textContent = `타워 판매 +${getTowerSellPrice(selectedTower)} $`;
+  const deleteCost = getTowerDeleteCost(selectedTower);
+  sellTowerBtn.textContent = `포탑 삭제 -${deleteCost} $`;
+  sellTowerBtn.disabled = coins < deleteCost;
   refreshEquipmentSlots();
   refreshTargetingOptions();
 

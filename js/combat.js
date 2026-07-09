@@ -190,6 +190,7 @@ function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
 
   if (enemy.hp <= 0) {
     applyEnemyDeathEffects(enemy, sourceTower, damageType);
+    if (enemy.element._moveInterval) clearInterval(enemy.element._moveInterval);
     if (document.body.contains(enemy.element)) enemy.element.remove();
     addTowerTime(sourceTower, parseInt(enemy.element.dataset.lv || enemy.lv || '0'));
     const rewardMultiplierRoll = Math.random();
@@ -221,6 +222,7 @@ function removeRemoteEnemy(enemyId) {
   if (idx === -1) return;
 
   const enemy = enemies[idx];
+  if (enemy.element._moveInterval) clearInterval(enemy.element._moveInterval);
   if (document.body.contains(enemy.element)) enemy.element.remove();
   enemies.splice(idx, 1);
 }

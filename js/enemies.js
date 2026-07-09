@@ -258,4 +258,5 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     enemyDiv.style.top = `${enemyDiv.offsetTop + vy}px`;
     }
   }, 16);
+  enemyDiv._moveInterval = interval;
 }

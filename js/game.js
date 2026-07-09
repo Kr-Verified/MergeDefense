@@ -48,6 +48,7 @@ async function endGame() {
 
   isGameOver = true;
   updateGamePausedState();
+  if (typeof clearSavedGameState === 'function') clearSavedGameState();
 
   if (window.TeamSession && window.TeamSession.isActive()) {
     await window.TeamSession.endGame(survivedSeconds);
@@ -161,7 +162,7 @@ function upgradeCreate() {
 createBtn.addEventListener('click', spawnBtn);
 upgradeBtn.addEventListener('click', upgradeCreate);
 closeUpgradeModalBtn.addEventListener('click', closeUpgradeModal);
-sellTowerBtn.addEventListener('click', sellSelectedTower);
+sellTowerBtn.addEventListener('click', deleteSelectedTower);
 upgradeModal.addEventListener('click', e => {
   if (e.target === upgradeModal) closeUpgradeModal();
 });
@@ -256,6 +257,7 @@ setupUpgradeAmountControls(towerLimitBtn, 'towerLimit');
 setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
 setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
 setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
+startGameAutosave();
 updateHealthText();
 updateSpeedModeButton();
 priceBar.textContent = `${getTowerCreateCost()} $`;
