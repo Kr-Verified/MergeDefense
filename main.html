@@ -17,6 +17,28 @@
     <div id="defense">
       <p id="health" style="color:red; margin-bottom: 10px;">1000 Hp</p>
     </div>
+    <div id="skill-bar">
+      <button id="skill-barrage" class="skill-btn" data-skill="barrage" type="button">
+        <span class="skill-cooldown-fill"></span>
+        <span class="skill-name">포격</span>
+        <span class="skill-cooldown"></span>
+      </button>
+      <button id="skill-frost" class="skill-btn" data-skill="frost" type="button">
+        <span class="skill-cooldown-fill"></span>
+        <span class="skill-name">빙결파</span>
+        <span class="skill-cooldown"></span>
+      </button>
+      <button id="skill-goldRush" class="skill-btn" data-skill="goldRush" type="button">
+        <span class="skill-cooldown-fill"></span>
+        <span class="skill-name">골드러시</span>
+        <span class="skill-cooldown"></span>
+      </button>
+      <button id="skill-repair" class="skill-btn" data-skill="repair" type="button">
+        <span class="skill-cooldown-fill"></span>
+        <span class="skill-name">응급 수리</span>
+        <span class="skill-cooldown"></span>
+      </button>
+    </div>
   </div>
   <div id="create-bar">
     <div id="inventory-toggle">
@@ -47,6 +69,7 @@
         <p id="tower-damage">공격 힘: 10</p>
         <p id="tower-speed">공격 속도: 1.00초</p>
         <p id="tower-range">공격 범위: 400</p>
+        <p id="tower-hp">체력: 100 / 100</p>
         <p id="tower-time">타임: 0</p>
       </div>
       <div class="upgrade-actions">
@@ -64,6 +87,14 @@
         </div>
         <button id="time-upgrade-star-btn" type="button">2성으로 업그레이드</button>
       </div>
+      <div class="targeting-panel">
+        <div class="targeting-title">타게팅 우선순위</div>
+        <div id="targeting-options" class="targeting-options">
+          <button type="button" class="targeting-btn" data-priority="nearest">가까운 적</button>
+          <button type="button" class="targeting-btn" data-priority="highestHp">체력 높은 적</button>
+          <button type="button" class="targeting-btn" data-priority="lowestHp">체력 낮은 적</button>
+        </div>
+      </div>
       <div class="equipment-panel">
         <div class="equipment-title">장비</div>
         <div id="equipment-slots" class="equipment-slots">
@@ -72,9 +103,14 @@
           <div class="equipment-slot" data-slot="2"></div>
         </div>
       </div>
+      <div class="sell-panel">
+        <button id="sell-tower-btn" type="button" class="sell-btn">타워 판매</button>
+      </div>
     </div>
   </div>
   <script src="supabase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="team.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

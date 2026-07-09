@@ -17,6 +17,7 @@ const towerStarText = document.getElementById('tower-star');
 const towerDamageText = document.getElementById('tower-damage');
 const towerSpeedText = document.getElementById('tower-speed');
 const towerRangeText = document.getElementById('tower-range');
+const towerHpText = document.getElementById('tower-hp');
 const towerTimeText = document.getElementById('tower-time');
 const upgradeSpeedBtn = document.getElementById('upgrade-speed-btn');
 const upgradePowerBtn = document.getElementById('upgrade-power-btn');
@@ -37,6 +38,8 @@ const speedModeBtn = document.getElementById('speed-mode-btn');
 const towerViewBtn = document.getElementById('tower-view-btn');
 const itemViewBtn = document.getElementById('item-view-btn');
 const equipmentSlots = document.getElementById('equipment-slots');
+const sellTowerBtn = document.getElementById('sell-tower-btn');
+const targetingOptions = document.getElementById('targeting-options');
 const inventoryEmpty = document.getElementById('inventory-empty');
 let draggedTower = null;
 let draggedEquipment = null;
@@ -74,6 +77,7 @@ let castleRecoverInterval = null;
 let survivalTimerInterval = null;
 let towerTimeInterval = null;
 let bossRecoverInterval = null;
+let enemyTowerCombatInterval = null;
 let survivedSeconds = 0;
 const enemies = [];
 const spawnedLimitedEnemyLevels = new Set();
@@ -93,6 +97,13 @@ const TOWER_STAR_UPGRADE_COSTS = {
   5: 8000
 };
 const EQUIPMENT_SLOT_UNLOCK_LEVELS = [0, 10, 100];
+const DEFAULT_TARGET_PRIORITY = 'nearest';
+const TARGET_PRIORITIES = ['nearest', 'highestHp', 'lowestHp'];
+const TOWER_MELEE_RANGE = 90;
+const ENEMY_TOWER_ATTACK_INTERVAL = 1000;
+const BOSS_AOE_RANGE = 220;
+const BOSS_AOE_INTERVAL = 3000;
+const BOSS_AOE_STUN_DURATION = 2000;
 const EQUIPMENT_TYPES = {
   oil: {
     name: '기름',
@@ -259,12 +270,60 @@ function getTowerHtml(lv, star, attribute = 'none') {
   const attributeText = getAttributeText(attribute);
   return `
     <p class="tower-level">${lv} Lv</p>
+    <div class="tower-hp-bar"><div class="tower-hp-fill"></div></div>
     <div class="tower-image-wrap">
       <img src="./img/${lv}.png" alt="${lv} Lv tower">
       <span class="tower-star-badge">${stars}</span>
       ${attributeText ? `<span class="tower-attribute-badge attribute-${attribute}">${attributeText}</span>` : ''}
     </div>
   `;
+}
+
+function getTowerMaxHp(tower) {
+  const lv = parseInt(tower.dataset.lv);
+  const star = parseInt(tower.dataset.star || '1');
+  return Math.max(1, Math.floor(lv * 50 * getTowerStarDamageMultiplier(star)));
+}
+
+function renderTowerHpBar(tower) {
+  const hpFill = tower.querySelector('.tower-hp-fill');
+  if (!hpFill) return;
+
+  const maxHp = parseInt(tower.dataset.maxHp || '1');
+  const hp = parseInt(tower.dataset.hp || '0');
+  const ratio = Math.max(0, Math.min(1, hp / maxHp));
+  hpFill.style.width = `${ratio * 100}%`;
+  hpFill.classList.toggle('low', ratio <= 0.3);
+  hpFill.classList.toggle('mid', ratio > 0.3 && ratio <= 0.6);
+}
+
+function damageTower(tower, amount) {
+  if (!tower || !board.contains(tower)) return;
+
+  const maxHp = parseInt(tower.dataset.maxHp || `${getTowerMaxHp(tower)}`);
+  const hp = Math.max(0, parseInt(tower.dataset.hp || `${maxHp}`) - Math.floor(amount));
+  tower.dataset.hp = `${hp}`;
+  renderTowerHpBar(tower);
+  if (tower === selectedTower) refreshUpgradeModal();
+
+  if (hp <= 0) destroyTower(tower);
+}
+
+function stunTower(tower, durationMs) {
+  if (!tower || !board.contains(tower)) return;
+
+  const stunUntil = Date.now() + durationMs;
+  if (stunUntil > parseInt(tower.dataset.stunUntil || '0')) tower.dataset.stunUntil = `${stunUntil}`;
+  tower.classList.add('stunned');
+}
+
+function destroyTower(tower) {
+  if (!tower || !board.contains(tower)) return;
+
+  releaseTowerEquipment(tower);
+  if (tower === selectedTower) closeUpgradeModal();
+  tower.remove();
+  refreshUpgradeUi();
 }
 
 function updateSurvivalTime() {
@@ -316,6 +375,12 @@ async function endGame() {
   if (isGameOver) return;
 
   isGameOver = true;
+
+  if (window.TeamSession && window.TeamSession.isActive()) {
+    await window.TeamSession.endGame(survivedSeconds);
+    return;
+  }
+
   try {
     await saveRanking();
   } catch (error) {
@@ -359,17 +424,22 @@ function getEnemyHtml(enemy) {
   `;
 }
 
-function spawnEnemy() {
-  if (isGamePaused) return;
+function spawnEnemy(forcedId, forcedLv) {
+  if (isGamePaused) return null;
 
-  const maxLv = Math.floor(enemyId / 10) + 1;
-  const spawnableLevels = [];
-  for (let lv = 1; lv <= maxLv; lv += 1) {
-    if (lv % 5 !== 0 || !spawnedLimitedEnemyLevels.has(lv)) spawnableLevels.push(lv);
+  let lv = forcedLv;
+  if (lv === undefined) {
+    const maxLv = Math.floor(enemyId / 10) + 1;
+    const spawnableLevels = [];
+    for (let candidate = 1; candidate <= maxLv; candidate += 1) {
+      if (candidate % 5 !== 0 || !spawnedLimitedEnemyLevels.has(candidate)) spawnableLevels.push(candidate);
+    }
+    lv = spawnableLevels[Math.floor(Math.random() * spawnableLevels.length)];
   }
-  const lv = spawnableLevels[Math.floor(Math.random() * spawnableLevels.length)];
+
   if (lv % 5 === 0) spawnedLimitedEnemyLevels.add(lv);
   const enemy = createEnemy(lv);
+  if (forcedId !== undefined) enemy.id = forcedId;
   const div = document.createElement('div');
   div.className = `enemy star-${enemy.star}`;
   div.style.display = 'flex';
@@ -398,6 +468,12 @@ function spawnEnemy() {
 
   enemies.push(enemy);
   moveEnemy(div, targetX, targetY);
+
+  if (forcedId === undefined && window.TeamSession && window.TeamSession.isActive() && window.TeamSession.isHost) {
+    window.TeamSession.reportEnemySpawned(enemy);
+  }
+
+  return enemy;
 }
 
 function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
@@ -418,7 +494,9 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       if (now - lastCastleAttack < 1000 / gameSpeed) return;
 
       enemyDiv.dataset.lastCastleAttack = `${now}`;
-      health -= parseInt(enemyDiv.dataset.castleDamage || '1');
+      const castleDamage = parseInt(enemyDiv.dataset.castleDamage || '1');
+      health -= castleDamage;
+      if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(castleDamage);
       if (health<=0) {
         endGame();
         return;
@@ -430,6 +508,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     speed = enemyLv%5==0 ? 0.8 : 1.5;
     if (enemyLv%4==0 && enemyLv%5!=0) speed = 2.3;
     if (Date.now() < parseInt(enemyDiv.dataset.stopUntil || '0')) return;
+    if (enemyDiv.dataset.engaged === '1') return;
     const slowMultiplier = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0') ? 0.5 : 1;
     const vx = (dx / dist) * speed * gameSpeed * slowMultiplier;
     const vy = (dy / dist) * speed * gameSpeed * slowMultiplier;
@@ -486,6 +565,14 @@ function setDefaultTowerStats(tower) {
   tower.dataset.lastAttack = tower.dataset.lastAttack || '0';
   tower.dataset.equipment = tower.dataset.equipment || '[null,null,null]';
   tower.dataset.time = tower.dataset.time || '0';
+  tower.dataset.targetPriority = tower.dataset.targetPriority || DEFAULT_TARGET_PRIORITY;
+  tower.dataset.stunUntil = tower.dataset.stunUntil || '0';
+  if (!tower.dataset.maxHp) {
+    const maxHp = getTowerMaxHp(tower);
+    tower.dataset.maxHp = `${maxHp}`;
+    tower.dataset.hp = `${maxHp}`;
+  }
+  renderTowerHpBar(tower);
 }
 
 function copyTowerStats(fromTower, toTower) {
@@ -497,6 +584,11 @@ function copyTowerStats(fromTower, toTower) {
   toTower.dataset.lastAttack = fromTower.dataset.lastAttack || '0';
   toTower.dataset.equipment = fromTower.dataset.equipment || '[null,null,null]';
   toTower.dataset.time = fromTower.dataset.time || '0';
+  toTower.dataset.targetPriority = fromTower.dataset.targetPriority || DEFAULT_TARGET_PRIORITY;
+  toTower.dataset.stunUntil = fromTower.dataset.stunUntil || '0';
+  toTower.dataset.maxHp = fromTower.dataset.maxHp || `${getTowerMaxHp(toTower)}`;
+  toTower.dataset.hp = fromTower.dataset.hp || toTower.dataset.maxHp;
+  renderTowerHpBar(toTower);
 }
 
 function getTowerDamage(tower) {
@@ -734,6 +826,22 @@ function closeUpgradeModal() {
   upgradeModal.classList.add('hidden');
 }
 
+function getTowerSellPrice(tower) {
+  const lv = parseInt(tower.dataset.lv || '1');
+  return lv * lv;
+}
+
+function sellSelectedTower() {
+  if (!selectedTower) return;
+
+  coins += getTowerSellPrice(selectedTower);
+  selectedTower.remove();
+  closeUpgradeModal();
+  updateInventoryView();
+  refreshUpgradeUi();
+  updateTopStatus();
+}
+
 function refreshUpgradeModal() {
   if (!selectedTower || !document.body.contains(selectedTower)) {
     closeUpgradeModal();
@@ -747,8 +855,11 @@ function refreshUpgradeModal() {
   towerDamageText.textContent = `공격 힘: ${getTowerDamage(selectedTower)}`;
   towerSpeedText.textContent = `공격 속도: ${(1000 / getTowerAttackInterval(selectedTower)).toFixed(2)}회/초`;
   towerRangeText.textContent = `공격 범위: ${getTowerRange(selectedTower)}`;
+  towerHpText.textContent = `체력: ${parseInt(selectedTower.dataset.hp || '0')} / ${parseInt(selectedTower.dataset.maxHp || '0')}${Date.now() < parseInt(selectedTower.dataset.stunUntil || '0') ? ' (기절)' : ''}`;
   towerTimeText.textContent = `타임: ${parseInt(selectedTower.dataset.time || '0')}`;
+  sellTowerBtn.textContent = `타워 판매 +${getTowerSellPrice(selectedTower)} $`;
   refreshEquipmentSlots();
+  refreshTargetingOptions();
 
   const speedCost = getSelectedUpgradeCost('towerSpeed');
   const powerCost = getSelectedUpgradeCost('towerPower');
@@ -873,6 +984,22 @@ function refreshEquipmentSlots() {
   });
 }
 
+function refreshTargetingOptions() {
+  if (!selectedTower) return;
+
+  const priority = selectedTower.dataset.targetPriority || DEFAULT_TARGET_PRIORITY;
+  [...targetingOptions.querySelectorAll('.targeting-btn')].forEach(button => {
+    button.classList.toggle('active', button.dataset.priority === priority);
+  });
+}
+
+function setSelectedTowerTargetPriority(priority) {
+  if (!selectedTower || !TARGET_PRIORITIES.includes(priority)) return;
+
+  selectedTower.dataset.targetPriority = priority;
+  refreshTargetingOptions();
+}
+
 function equipDraggedEquipment(slotIndex) {
   if (!selectedTower || !draggedEquipment) return;
   if (getTowerUpgradeTotal(selectedTower) < EQUIPMENT_SLOT_UNLOCK_LEVELS[slotIndex]) return;
@@ -951,6 +1078,9 @@ function upgradeSelectedTowerStarWithTime() {
   const currentTime = parseInt(selectedTower.dataset.time || '0');
   if (!cost || currentTime < cost) return;
 
+  const oldMaxHp = getTowerMaxHp(selectedTower);
+  const currentHp = parseInt(selectedTower.dataset.hp || `${oldMaxHp}`);
+
   selectedTower.dataset.time = `${currentTime - cost}`;
   selectedTower.dataset.star = `${nextStar}`;
   selectedTower.classList.remove('star-1', 'star-2', 'star-3', 'star-4', 'star-5');
@@ -960,6 +1090,11 @@ function upgradeSelectedTowerStarWithTime() {
     nextStar,
     selectedTower.dataset.attribute || 'none'
   );
+
+  const newMaxHp = getTowerMaxHp(selectedTower);
+  selectedTower.dataset.maxHp = `${newMaxHp}`;
+  selectedTower.dataset.hp = `${currentHp + (newMaxHp - oldMaxHp)}`;
+  renderTowerHpBar(selectedTower);
   refreshUpgradeUi();
 }
 
@@ -1023,8 +1158,10 @@ function recoverCastleHealth() {
   if (isGamePaused) return;
   if (health >= maxHealth) return;
 
-  health = Math.min(maxHealth, health + maxHealth * 0.01);
+  const amount = maxHealth * 0.01;
+  health = Math.min(maxHealth, health + amount);
   updateHealthText();
+  if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
 }
 
 function spawnBtn() {
@@ -1232,6 +1369,13 @@ equipmentSlots.addEventListener('click', e => {
   unequipEquipment(parseInt(slot.dataset.slot));
 });
 
+targetingOptions.addEventListener('click', e => {
+  e.stopPropagation();
+  const button = e.target.closest('.targeting-btn');
+  if (!button) return;
+  setSelectedTowerTargetPriority(button.dataset.priority);
+});
+
 function fireBullet(fromTower, toEnemy) {
   if (!toEnemy || !document.body.contains(toEnemy.element)) return;
 
@@ -1300,6 +1444,7 @@ function recoverCastleHealthByAmount(amount) {
 
   health = Math.min(maxHealth, health + amount);
   updateHealthText();
+  if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
 }
 
 function damageEnemy(enemy, damage, sourceTower = null) {
@@ -1308,6 +1453,9 @@ function damageEnemy(enemy, damage, sourceTower = null) {
   const appliedDamage = Math.floor(damage);
   enemy.hp -= appliedDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
+
+  const isTeamActive = window.TeamSession && window.TeamSession.isActive();
+  if (isTeamActive) window.TeamSession.reportEnemyHit(enemy.id, appliedDamage);
 
   if (enemy.hp <= 0) {
     if (document.body.contains(enemy.element)) enemy.element.remove();
@@ -1321,9 +1469,35 @@ function damageEnemy(enemy, damage, sourceTower = null) {
     refreshUpgradeUi();
     const idx = enemies.indexOf(enemy)
     if (idx!=-1) enemies.splice(idx, 1);
+    if (isTeamActive) window.TeamSession.reportEnemyDeath(enemy.id);
   }
 
   return appliedDamage;
+}
+
+function applyRemoteEnemyHit(enemyId, amount) {
+  const enemy = enemies.find(e => e.id === enemyId);
+  if (!enemy || !document.body.contains(enemy.element)) return;
+
+  enemy.hp = Math.max(0, Math.min(enemy.maxHp, enemy.hp - amount));
+  enemy.element.innerHTML = getEnemyHtml(enemy);
+}
+
+function removeRemoteEnemy(enemyId) {
+  const idx = enemies.findIndex(e => e.id === enemyId);
+  if (idx === -1) return;
+
+  const enemy = enemies[idx];
+  if (document.body.contains(enemy.element)) enemy.element.remove();
+  enemies.splice(idx, 1);
+}
+
+function applyRemoteCastleHit(amount) {
+  if (isGameOver) return;
+
+  health = Math.max(0, Math.min(maxHealth, health - amount));
+  updateHealthText();
+  if (health <= 0) endGame();
 }
 
 function applyTowerHit(fromTower, targetEnemy) {
@@ -1415,6 +1589,48 @@ function applyBombDamage(targetEnemy, damage, fromTower) {
   });
 }
 
+function getTowerTarget(tower, towerRect, towerRange) {
+  const priority = tower.dataset.targetPriority || DEFAULT_TARGET_PRIORITY;
+  let targetEnemy = null;
+  let bestDistance = Infinity;
+  let bestHp = priority === 'highestHp' ? -Infinity : Infinity;
+
+  enemies.forEach(enemy => {
+    if (!document.body.contains(enemy.element)) return;
+
+    const enemyRect = enemy.element.getBoundingClientRect();
+    const dx = (enemyRect.left + 40) - (towerRect.left + 40);
+    const dy = (enemyRect.top + 40) - (towerRect.top + 40);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist >= towerRange) return;
+
+    if (priority === 'highestHp') {
+      if (enemy.hp > bestHp || (enemy.hp === bestHp && dist < bestDistance)) {
+        targetEnemy = enemy;
+        bestHp = enemy.hp;
+        bestDistance = dist;
+      }
+      return;
+    }
+
+    if (priority === 'lowestHp') {
+      if (enemy.hp < bestHp || (enemy.hp === bestHp && dist < bestDistance)) {
+        targetEnemy = enemy;
+        bestHp = enemy.hp;
+        bestDistance = dist;
+      }
+      return;
+    }
+
+    if (dist < bestDistance) {
+      targetEnemy = enemy;
+      bestDistance = dist;
+    }
+  });
+
+  return targetEnemy;
+}
+
 function towerAttackLoop() {
   if (isGamePaused) return;
 
@@ -1422,27 +1638,19 @@ function towerAttackLoop() {
   const now = Date.now();
   towers.forEach(tower => {
     if (!board.contains(tower)) return;
+
+    if (now < parseInt(tower.dataset.stunUntil || '0')) {
+      tower.classList.add('stunned');
+      return;
+    }
+    tower.classList.remove('stunned');
+
     const lastAttack = parseInt(tower.dataset.lastAttack || '0');
     if (now - lastAttack < getTowerAttackInterval(tower)) return;
 
     const towerRect = tower.getBoundingClientRect();
     const towerRange = getTowerRange(tower);
-    let targetEnemy = null;
-    let nearestDistance = Infinity;
-
-    enemies.forEach(enemy => {
-      if (!document.body.contains(enemy.element)) return;
-
-      const enemyRect = enemy.element.getBoundingClientRect();
-      const dx = (enemyRect.left + 40) - (towerRect.left + 40);
-      const dy = (enemyRect.top + 40) - (towerRect.top + 40);
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < towerRange && dist < nearestDistance) {
-        targetEnemy = enemy;
-        nearestDistance = dist;
-      }
-    });
+    const targetEnemy = getTowerTarget(tower, towerRect, towerRange);
 
     if (targetEnemy) {
       tower.dataset.lastAttack = `${now}`;
@@ -1465,8 +1673,152 @@ function bossRecoverLoop() {
   enemies.forEach(enemy => {
     if (enemy.lv%5!=0 || !document.body.contains(enemy.element)) return;
 
-    enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.01);
+    const healAmount = enemy.maxHp * 0.01;
+    enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
     enemy.element.innerHTML = getEnemyHtml(enemy);
+    if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportEnemyHit(enemy.id, -healAmount);
+  });
+}
+
+function getNearestTowerInRange(x, y, range) {
+  let nearestTower = null;
+  let nearestDistance = Infinity;
+
+  board.querySelectorAll('.tower').forEach(tower => {
+    const rect = tower.getBoundingClientRect();
+    const dx = (rect.left + rect.width / 2) - x;
+    const dy = (rect.top + rect.height / 2) - y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < range && dist < nearestDistance) {
+      nearestTower = tower;
+      nearestDistance = dist;
+    }
+  });
+
+  return nearestTower;
+}
+
+function enemyTowerCombatLoop() {
+  if (isGamePaused) return;
+
+  const now = Date.now();
+
+  enemies.forEach(enemy => {
+    if (!document.body.contains(enemy.element)) return;
+
+    const isBoss = enemy.lv % 5 === 0;
+    const rect = enemy.element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+
+    if (isBoss) {
+      const lastAoe = parseInt(enemy.element.dataset.lastBossAoe || '0');
+      if (now - lastAoe < BOSS_AOE_INTERVAL / gameSpeed) return;
+
+      const towersInRange = [...board.querySelectorAll('.tower')].filter(tower => {
+        const towerRect = tower.getBoundingClientRect();
+        const dx = (towerRect.left + towerRect.width / 2) - x;
+        const dy = (towerRect.top + towerRect.height / 2) - y;
+        return Math.sqrt(dx * dx + dy * dy) < BOSS_AOE_RANGE;
+      });
+
+      if (towersInRange.length === 0) return;
+
+      enemy.element.dataset.lastBossAoe = `${now}`;
+      towersInRange.forEach(tower => {
+        damageTower(tower, enemy.castleDamage);
+        stunTower(tower, BOSS_AOE_STUN_DURATION / gameSpeed);
+      });
+      return;
+    }
+
+    if (enemy.lv % 3 !== 0) {
+      enemy.element.dataset.engaged = '0';
+      return;
+    }
+
+    const targetTower = getNearestTowerInRange(x, y, TOWER_MELEE_RANGE);
+    if (!targetTower) {
+      enemy.element.dataset.engaged = '0';
+      return;
+    }
+
+    enemy.element.dataset.engaged = '1';
+    const lastTowerAttack = parseInt(enemy.element.dataset.lastTowerAttack || '0');
+    if (now - lastTowerAttack < ENEMY_TOWER_ATTACK_INTERVAL / gameSpeed) return;
+
+    enemy.element.dataset.lastTowerAttack = `${now}`;
+    damageTower(targetTower, enemy.castleDamage);
+  });
+}
+
+function castBarrage() {
+  [...enemies].forEach(enemy => damageEnemy(enemy, enemy.maxHp * 0.3, null));
+}
+
+function castFrostWave() {
+  const slowUntil = `${Date.now() + 4000}`;
+  [...enemies].forEach(enemy => {
+    if (!document.body.contains(enemy.element)) return;
+    enemy.element.dataset.slowUntil = slowUntil;
+  });
+}
+
+function castGoldRush() {
+  coins += Math.max(20, Math.floor(40 * Math.pow(spawnLv, 1.5)));
+  refreshUpgradeUi();
+}
+
+function castFieldRepair() {
+  recoverCastleHealthByAmount(maxHealth * 0.2);
+  board.querySelectorAll('.tower').forEach(tower => {
+    const maxHp = parseInt(tower.dataset.maxHp || `${getTowerMaxHp(tower)}`);
+    const hp = Math.min(maxHp, parseInt(tower.dataset.hp || '0') + Math.floor(maxHp * 0.2));
+    tower.dataset.hp = `${hp}`;
+    renderTowerHpBar(tower);
+  });
+  if (selectedTower) refreshUpgradeModal();
+}
+
+const SKILLS = {
+  barrage: { name: '포격', cooldown: 20000, cast: castBarrage },
+  frost: { name: '빙결파', cooldown: 15000, cast: castFrostWave },
+  goldRush: { name: '골드러시', cooldown: 25000, cast: castGoldRush },
+  repair: { name: '응급 수리', cooldown: 30000, cast: castFieldRepair }
+};
+const skillLastUsed = { barrage: 0, frost: 0, goldRush: 0, repair: 0 };
+
+function useSkill(key) {
+  if (isGamePaused || isGameOver) return;
+
+  const skill = SKILLS[key];
+  if (!skill) return;
+
+  const now = Date.now();
+  const cooldown = skill.cooldown / gameSpeed;
+  if (now - skillLastUsed[key] < cooldown) return;
+
+  skillLastUsed[key] = now;
+  skill.cast();
+  refreshSkillBar();
+}
+
+function refreshSkillBar() {
+  const now = Date.now();
+  document.querySelectorAll('.skill-btn').forEach(button => {
+    const key = button.dataset.skill;
+    const skill = SKILLS[key];
+    if (!skill) return;
+
+    const cooldown = skill.cooldown / gameSpeed;
+    const remaining = Math.max(0, cooldown - (now - skillLastUsed[key]));
+    const ready = remaining <= 0;
+
+    button.disabled = !ready || isGamePaused || isGameOver;
+    const cooldownText = button.querySelector('.skill-cooldown');
+    const cooldownFill = button.querySelector('.skill-cooldown-fill');
+    if (cooldownText) cooldownText.textContent = ready ? '준비' : `${Math.ceil(remaining / 1000)}s`;
+    if (cooldownFill) cooldownFill.style.height = `${Math.min(100, (remaining / cooldown) * 100)}%`;
   });
 }
 
@@ -1486,17 +1838,23 @@ function resetGameIntervals() {
   if (survivalTimerInterval) clearInterval(survivalTimerInterval);
   if (towerTimeInterval) clearInterval(towerTimeInterval);
   if (bossRecoverInterval) clearInterval(bossRecoverInterval);
+  if (enemyTowerCombatInterval) clearInterval(enemyTowerCombatInterval);
 
-  enemySpawnInterval = setInterval(spawnEnemy, 5000 / gameSpeed);
+  const isTeamMode = window.TeamSession && window.TeamSession.isActive();
+  const isWaveAuthority = !isTeamMode || window.TeamSession.isHost === true;
+
+  enemySpawnInterval = isWaveAuthority ? setInterval(spawnEnemy, 5000 / gameSpeed) : null;
   towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
-  castleRecoverInterval = setInterval(recoverCastleHealth, 1000 / gameSpeed);
+  castleRecoverInterval = isWaveAuthority ? setInterval(recoverCastleHealth, 1000 / gameSpeed) : null;
   towerTimeInterval = setInterval(towerTimeLoop, 1000 / gameSpeed);
-  bossRecoverInterval = setInterval(bossRecoverLoop, 1000 / gameSpeed);
+  bossRecoverInterval = isWaveAuthority ? setInterval(bossRecoverLoop, 1000 / gameSpeed) : null;
+  enemyTowerCombatInterval = setInterval(enemyTowerCombatLoop, 200 / gameSpeed);
   survivalTimerInterval = setInterval(() => {
     if (isGamePaused) return;
 
     survivedSeconds += 1;
     updateTopStatus();
+    refreshSkillBar();
   }, 1000 / gameSpeed);
 }
 
@@ -1506,6 +1864,7 @@ function toggleSpeedMode() {
   else gameSpeed = 1;
   updateSpeedModeButton();
   resetGameIntervals();
+  refreshSkillBar();
 }
 
 
@@ -1523,6 +1882,7 @@ function upgradeCreate() {
 }
 
 closeUpgradeModalBtn.addEventListener('click', closeUpgradeModal);
+sellTowerBtn.addEventListener('click', sellSelectedTower);
 upgradeModal.addEventListener('click', e => {
   if (e.target === upgradeModal) closeUpgradeModal();
 });
@@ -1544,6 +1904,9 @@ towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
 towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
 itemViewBtn.addEventListener('click', () => setInventoryView('item'));
+document.querySelectorAll('.skill-btn').forEach(button => {
+  button.addEventListener('click', () => useSkill(button.dataset.skill));
+});
 setupUpgradeAmountControls(upgradeBtn, 'create');
 setupUpgradeAmountControls(globalSpeedBtn, 'globalSpeed');
 setupUpgradeAmountControls(globalPowerBtn, 'globalPower');
@@ -1560,4 +1923,5 @@ updateSpeedModeButton();
 priceBar.textContent = `${getTowerCreateCost()} $`;
 refreshUpgradeUi();
 updateInventoryView();
+refreshSkillBar();
 resetGameIntervals();
