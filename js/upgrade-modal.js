@@ -190,6 +190,7 @@ function sellSelectedTower() {
   updateInventoryView();
   refreshUpgradeUi();
   updateTopStatus();
+  reportTeamSharedState();
 }
 
 function refreshUpgradeModal() {
@@ -319,6 +320,7 @@ function setSelectedTowerTargetPriority(priority) {
 
   selectedTower.dataset.targetPriority = priority;
   refreshTargetingOptions();
+  reportTeamSharedState();
 }
 
 function upgradeSelectedTower(type) {
@@ -334,6 +336,7 @@ function upgradeSelectedTower(type) {
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeSelectedTowerWithTime(type) {
@@ -349,6 +352,7 @@ function upgradeSelectedTowerWithTime(type) {
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeSelectedTowerStarWithTime() {
@@ -378,6 +382,7 @@ function upgradeSelectedTowerStarWithTime() {
   selectedTower.dataset.hp = `${currentHp + (newMaxHp - oldMaxHp)}`;
   renderTowerHpBar(selectedTower);
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeGlobalTowerStat(type) {
@@ -394,6 +399,7 @@ function upgradeGlobalTowerStat(type) {
   if (type === 'range') globalRangeUpgrade += count;
 
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeCriticalStat(type) {
@@ -408,6 +414,7 @@ function upgradeCriticalStat(type) {
   if (type === 'damage') criticalDamageUpgrade += count;
 
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeCastleHealth() {
@@ -422,6 +429,7 @@ function upgradeCastleHealth() {
   health = Math.min(maxHealth, health + 250 * count);
   updateHealthText();
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function upgradeTowerLimit() {
@@ -434,6 +442,7 @@ function upgradeTowerLimit() {
   towerLimitUpgrade += count;
   towerLimit += count;
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 targetingOptions.addEventListener('click', e => {

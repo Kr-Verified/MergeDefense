@@ -51,6 +51,7 @@ function getEquipmentBonus(tower, stat) {
 function spawnEquipment() {
   const equipment = createEquipment();
   addEquipmentToInventory(equipment);
+  reportTeamSharedState();
 }
 
 function addEquipmentToInventory(equipment) {
@@ -116,6 +117,7 @@ function equipDraggedEquipment(slotIndex) {
   draggedEquipment.remove();
   draggedEquipment = null;
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function unequipEquipment(slotIndex) {
@@ -131,6 +133,7 @@ function unequipEquipment(slotIndex) {
   applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   addEquipmentToInventory(equipped);
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function releaseTowerEquipment(tower) {
@@ -183,6 +186,7 @@ function mergeEquipment(firstElem, secondElem) {
   draggedEquipment = null;
   addEquipmentToInventory(mergedEquipment);
   setInventoryView('item');
+  reportTeamSharedState();
 }
 
 equipmentSlots.addEventListener('dragover', e => {

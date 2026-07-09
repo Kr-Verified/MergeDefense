@@ -595,6 +595,44 @@ body {
   font-weight: 800;
 }
 
+.recipe-book {
+  width: 168px;
+  min-height: 96px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid rgba(255, 224, 102, 0.4);
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(255, 224, 102, 0.14), rgba(14, 18, 36, 0.92));
+  user-select: none;
+}
+
+.recipe-book-name {
+  margin: 0;
+  color: #ffe066;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.recipe-book-ingredients {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.recipe-book-effect {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .bullet {
   position: absolute;
   z-index: 5;

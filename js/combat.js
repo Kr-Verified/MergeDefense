@@ -6,6 +6,7 @@ function damageTower(tower, amount) {
   tower.dataset.hp = `${hp}`;
   renderTowerHpBar(tower);
   if (tower === selectedTower) refreshUpgradeModal();
+  reportTeamSharedState();
 
   if (hp <= 0) destroyTower(tower);
 }
@@ -84,6 +85,7 @@ function addTowerTime(tower, amount) {
 
   tower.dataset.time = `${parseInt(tower.dataset.time || '0') + amount}`;
   if (tower === selectedTower) refreshUpgradeModal();
+  reportTeamSharedState();
 }
 
 function isTowerAttribute(attribute, ...attributes) {
@@ -194,12 +196,13 @@ function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
     let rewardMultiplier = 1;
     if (rewardMultiplierRoll < 0.02) rewardMultiplier = 20;
     else if (rewardMultiplierRoll < 0.22) rewardMultiplier = 3;
-    coins += parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv)*rewardMultiplier;
+    const reward = parseInt(enemy.element.dataset.lv)*parseInt(enemy.element.dataset.lv)*rewardMultiplier;
+    coins += reward;
     if (Math.random() < 0.3) spawnEquipment();
     refreshUpgradeUi();
     const idx = enemies.indexOf(enemy)
     if (idx!=-1) enemies.splice(idx, 1);
-    if (isTeamActive) window.TeamSession.reportEnemyDeath(enemy.id);
+    if (isTeamActive) window.TeamSession.reportEnemyDeath(enemy.id, reward);
   }
 
   return appliedDamage;

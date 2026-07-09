@@ -87,6 +87,7 @@ function recoverCastleHealth() {
   health = Math.min(maxHealth, health + amount);
   updateHealthText();
   if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
+  reportTeamSharedState();
 }
 
 function recoverCastleHealthByAmount(amount) {
@@ -95,6 +96,7 @@ function recoverCastleHealthByAmount(amount) {
   health = Math.min(maxHealth, health + amount);
   updateHealthText();
   if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
+  reportTeamSharedState();
 }
 
 function updateSpeedModeButton() {
@@ -113,21 +115,21 @@ function resetGameIntervals() {
   updateGamePausedState();
   if (gameSpeed === 0) return;
 
-  const isTeamMode = window.TeamSession && window.TeamSession.isActive();
-  const isWaveAuthority = !isTeamMode || window.TeamSession.isHost === true;
+  const isWaveAuthority = isTeamSimulationAuthority();
 
   enemySpawnInterval = isWaveAuthority ? setInterval(spawnEnemy, 5000 / gameSpeed) : null;
-  towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
+  towerAttackInterval = isWaveAuthority ? setInterval(towerAttackLoop, 100 / gameSpeed) : null;
   castleRecoverInterval = isWaveAuthority ? setInterval(recoverCastleHealth, 1000 / gameSpeed) : null;
-  towerTimeInterval = setInterval(towerTimeLoop, 1000 / gameSpeed);
+  towerTimeInterval = isWaveAuthority ? setInterval(towerTimeLoop, 1000 / gameSpeed) : null;
   bossRecoverInterval = isWaveAuthority ? setInterval(bossRecoverLoop, 1000 / gameSpeed) : null;
-  enemyTowerCombatInterval = setInterval(enemyTowerCombatLoop, 200 / gameSpeed);
+  enemyTowerCombatInterval = isWaveAuthority ? setInterval(enemyTowerCombatLoop, 200 / gameSpeed) : null;
   survivalTimerInterval = setInterval(() => {
     if (isGamePaused) return;
 
-    survivedSeconds += 1;
+    if (isWaveAuthority) survivedSeconds += 1;
     updateTopStatus();
     refreshSkillBar();
+    if (isWaveAuthority) reportTeamSharedState();
   }, 1000 / gameSpeed);
 }
 
@@ -138,6 +140,7 @@ function toggleSpeedMode() {
   updateSpeedModeButton();
   resetGameIntervals();
   refreshSkillBar();
+  reportTeamSharedState();
 }
 
 
@@ -151,6 +154,7 @@ function upgradeCreate() {
     spawnLvExpress.textContent = `${spawnLv} 생성`;
     priceBar.textContent = `${getTowerCreateCost()} $`
     refreshUpgradeUi();
+    reportTeamSharedState();
   }
 }
 
@@ -221,7 +225,10 @@ fusionOrbList.addEventListener('click', e => {
   applyFusionOrb(chip.dataset.attribute);
 });
 
-blacksmithBtn.addEventListener('click', openBlacksmithModal);
+blacksmithBtn.addEventListener('click', () => {
+  setInventoryView('recipe');
+  openBlacksmithModal();
+});
 closeBlacksmithModalBtn.addEventListener('click', closeBlacksmithModal);
 blacksmithModal.addEventListener('click', e => {
   if (e.target === blacksmithModal) closeBlacksmithModal();

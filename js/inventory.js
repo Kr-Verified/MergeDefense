@@ -35,6 +35,8 @@ function makeDraggable(elem) {
       elem.remove();
 
       spawnTower(draggedLv+1, resultStar, resultAttribute);
+      maybeGrantRecipeBook();
+      reportTeamSharedState();
     }
   });
 }
@@ -46,10 +48,13 @@ function setInventoryView(view) {
 
 function updateInventoryView() {
   const showTowers = inventoryView === 'tower';
+  const showItems = inventoryView === 'item';
+  const showRecipes = inventoryView === 'recipe';
   let visibleCount = 0;
 
   towerViewBtn.classList.toggle('active', showTowers);
-  itemViewBtn.classList.toggle('active', !showTowers);
+  itemViewBtn.classList.toggle('active', showItems);
+  blacksmithBtn.classList.toggle('active', showRecipes);
 
   [...createBar.querySelectorAll('.tower')].forEach(tower => {
     if (board.contains(tower)) return;
@@ -58,11 +63,21 @@ function updateInventoryView() {
   });
 
   [...createBar.querySelectorAll('.equipment')].forEach(equipment => {
-    equipment.classList.toggle('hidden-inventory', showTowers);
-    if (!showTowers) visibleCount += 1;
+    equipment.classList.toggle('hidden-inventory', !showItems);
+    if (showItems) visibleCount += 1;
   });
 
-  inventoryEmpty.textContent = showTowers ? '대기 중인 포탑이 없습니다' : '보유 중인 아이템이 없습니다';
+  [...createBar.querySelectorAll('.recipe-book')].forEach(book => {
+    book.classList.toggle('hidden-inventory', !showRecipes);
+    if (showRecipes) visibleCount += 1;
+  });
+
+  const emptyMessages = {
+    tower: '대기 중인 포탑이 없습니다',
+    item: '보유 중인 아이템이 없습니다',
+    recipe: '보유 중인 조합서가 없습니다'
+  };
+  inventoryEmpty.textContent = emptyMessages[inventoryView] || '';
   inventoryEmpty.classList.toggle('hidden-inventory', visibleCount > 0);
 }
 
@@ -119,6 +134,7 @@ function move(from, to) {
       to.appendChild(div);
       updateInventoryView();
       refreshUpgradeUi();
+      reportTeamSharedState();
     }
 
     draggedTower = null;

@@ -23,6 +23,7 @@ function castFieldRepair() {
     renderTowerHpBar(tower);
   });
   if (selectedTower) refreshUpgradeModal();
+  reportTeamSharedState();
 }
 
 const SKILLS = {

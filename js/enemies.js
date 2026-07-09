@@ -234,6 +234,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
         enemy.element.innerHTML = getEnemyHtml(enemy);
       }
       if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(castleDamage);
+      reportTeamSharedState();
       if (health<=0) {
         endGame();
         return;

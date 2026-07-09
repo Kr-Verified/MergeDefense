@@ -10,6 +10,9 @@
     playerName: localStorage.getItem('name') || 'Guest',
     channel: null,
     ended: false,
+    applyingSharedState: false,
+    sharedStateVersion: 0,
+    pendingSharedStateTimer: null,
 
     isActive() {
       return this.active;
@@ -54,12 +57,12 @@
     });
   };
 
-  session.reportEnemyDeath = function (enemyId) {
+  session.reportEnemyDeath = function (enemyId, reward = 0) {
     if (!session.channel) return;
     session.channel.send({
       type: 'broadcast',
       event: 'enemy-death',
-      payload: { id: enemyId, from: session.clientId }
+      payload: { id: enemyId, reward: reward, from: session.clientId }
     });
   };
 
@@ -78,6 +81,201 @@
       type: 'broadcast',
       event: 'cursor-move',
       payload: { from: session.clientId, name: session.playerName, xRatio: xRatio, yRatio: yRatio }
+    });
+  };
+
+  function serializeDataset(element) {
+    return Object.keys(element.dataset).reduce((data, key) => {
+      data[key] = element.dataset[key];
+      return data;
+    }, {});
+  }
+
+  function serializeTower(tower) {
+    const inBoard = document.getElementById('game-board').contains(tower);
+    return {
+      container: inBoard ? 'board' : 'inventory',
+      dataset: serializeDataset(tower),
+      left: tower.style.left || '',
+      top: tower.style.top || '',
+      zIndex: tower.style.zIndex || ''
+    };
+  }
+
+  function serializeEquipmentElement(equipment) {
+    return {
+      id: parseInt(equipment.dataset.id, 10),
+      type: equipment.dataset.type,
+      value: parseInt(equipment.dataset.value, 10)
+    };
+  }
+
+  function serializeSharedState() {
+    return {
+      version: Math.max(Date.now(), session.sharedStateVersion + 1),
+      globals: {
+        spawnLv,
+        health,
+        maxHealth,
+        globalSpeedUpgrade,
+        globalPowerUpgrade,
+        globalRangeUpgrade,
+        criticalChanceUpgrade,
+        criticalDamageUpgrade,
+        castleHealthUpgrade,
+        towerLimitUpgrade,
+        towerLimit,
+        gameSpeed,
+        survivedSeconds,
+        towerId,
+        equipmentId,
+        attributeOrbs: { ...attributeOrbs },
+        ownedRecipeBooks: { ...ownedRecipeBooks }
+      },
+      towers: [...document.querySelectorAll('.tower')].map(serializeTower),
+      equipment: [...document.querySelectorAll('#create-bar .equipment')].map(serializeEquipmentElement)
+    };
+  }
+
+  function createTowerFromState(state) {
+    const data = state.dataset || {};
+    const lv = parseInt(data.lv || '1', 10);
+    const star = parseInt(data.star || '1', 10);
+    const attribute = data.attribute || 'none';
+    const tower = document.createElement('div');
+    tower.className = `tower star-${star} attribute-${getAttributeClass(attribute)}`;
+    if (state.container === 'board') tower.classList.add('installed');
+    tower.innerHTML = getTowerHtml(lv, star, attribute);
+    tower.draggable = true;
+    Object.keys(data).forEach(key => { tower.dataset[key] = data[key]; });
+
+    if (state.container === 'board') {
+      tower.style.position = 'absolute';
+      tower.style.left = state.left || '0px';
+      tower.style.top = state.top || '0px';
+      tower.style.zIndex = state.zIndex || '10';
+    } else {
+      tower.style.position = 'relative';
+      tower.style.zIndex = state.zIndex || '1';
+    }
+
+    makeDraggable(tower);
+    renderTowerHpBar(tower);
+    return tower;
+  }
+
+  function createEquipmentFromState(equipment) {
+    const div = document.createElement('div');
+    div.className = `equipment equipment-${equipment.type}`;
+    div.draggable = true;
+    div.innerHTML = getEquipmentHtml(equipment);
+    div.dataset.id = equipment.id;
+    div.dataset.type = equipment.type;
+    div.dataset.value = equipment.value;
+    makeEquipmentDraggable(div);
+    return div;
+  }
+
+  function applySharedState(state) {
+    if (!state || state.version <= session.sharedStateVersion) return;
+    session.sharedStateVersion = state.version;
+    session.applyingSharedState = true;
+
+    try {
+      const selectedTowerId = selectedTower?.dataset?.id || null;
+      const shouldRestoreUpgradeModal = Boolean(isUpgradeModalOpen && selectedTowerId);
+      if (selectedTower) selectedTower.classList.remove('selected');
+      selectedTower = null;
+      if (typeof cancelTowerAction === 'function') cancelTowerAction();
+
+      document.querySelectorAll('.tower').forEach(tower => tower.remove());
+      document.querySelectorAll('#create-bar .equipment, #create-bar .recipe-book').forEach(item => item.remove());
+
+      const globals = state.globals || {};
+      spawnLv = globals.spawnLv ?? spawnLv;
+      health = globals.health ?? health;
+      maxHealth = globals.maxHealth ?? maxHealth;
+      globalSpeedUpgrade = globals.globalSpeedUpgrade ?? globalSpeedUpgrade;
+      globalPowerUpgrade = globals.globalPowerUpgrade ?? globalPowerUpgrade;
+      globalRangeUpgrade = globals.globalRangeUpgrade ?? globalRangeUpgrade;
+      criticalChanceUpgrade = globals.criticalChanceUpgrade ?? criticalChanceUpgrade;
+      criticalDamageUpgrade = globals.criticalDamageUpgrade ?? criticalDamageUpgrade;
+      castleHealthUpgrade = globals.castleHealthUpgrade ?? castleHealthUpgrade;
+      towerLimitUpgrade = globals.towerLimitUpgrade ?? towerLimitUpgrade;
+      towerLimit = globals.towerLimit ?? towerLimit;
+      gameSpeed = globals.gameSpeed ?? gameSpeed;
+      survivedSeconds = globals.survivedSeconds ?? survivedSeconds;
+      towerId = Math.max(towerId, globals.towerId || 0);
+      equipmentId = Math.max(equipmentId, globals.equipmentId || 0);
+      attributeOrbs = { ...(globals.attributeOrbs || {}) };
+      ownedRecipeBooks = { ...(globals.ownedRecipeBooks || {}) };
+
+      (state.towers || []).forEach(towerState => {
+        const tower = createTowerFromState(towerState);
+        (towerState.container === 'board' ? board : createBar).appendChild(tower);
+      });
+
+      (state.equipment || []).forEach(equipment => {
+        createBar.appendChild(createEquipmentFromState(equipment));
+      });
+
+      Object.keys(ownedRecipeBooks).forEach(result => {
+        if (!ownedRecipeBooks[result]) return;
+        const recipe = FUSION_RECIPES.find(item => item.result === result);
+        if (recipe) addRecipeBookToInventory(recipe);
+      });
+
+      spawnLvExpress.textContent = `${spawnLv} 생성`;
+      priceBar.textContent = `${getTowerCreateCost()} $`;
+      updateHealthText();
+      updateSpeedModeButton();
+      updateGamePausedState();
+      updateInventoryView();
+      refreshUpgradeUi();
+      if (shouldRestoreUpgradeModal) {
+        const restoredTower = board.querySelector(`.tower[data-id="${selectedTowerId}"]`);
+        if (restoredTower) {
+          selectedTower = restoredTower;
+          selectedTower.classList.add('selected');
+          isUpgradeModalOpen = true;
+          upgradeModal.classList.remove('hidden');
+          refreshUpgradeModal();
+        } else if (typeof closeUpgradeModal === 'function') {
+          closeUpgradeModal();
+        }
+      }
+      refreshSkillBar();
+      resetGameIntervals();
+    } finally {
+      session.applyingSharedState = false;
+    }
+  }
+
+  session.reportSharedState = function () {
+    if (!session.active || !session.channel || session.applyingSharedState || session.ended) return;
+
+    clearTimeout(session.pendingSharedStateTimer);
+    session.pendingSharedStateTimer = setTimeout(() => {
+      if (!session.channel || session.applyingSharedState || session.ended) return;
+      const state = serializeSharedState();
+      session.sharedStateVersion = state.version;
+      session.channel.send({
+        type: 'broadcast',
+        event: 'shared-state',
+        payload: { from: session.clientId, state }
+      });
+    }, 50);
+  };
+
+  session.reportSharedStateNow = function () {
+    if (!session.active || !session.channel || session.applyingSharedState || session.ended) return;
+    clearTimeout(session.pendingSharedStateTimer);
+    const state = serializeSharedState();
+    session.sharedStateVersion = state.version;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'shared-state',
+      payload: { from: session.clientId, state }
     });
   };
 
@@ -229,12 +427,24 @@
 
     channel.on('broadcast', { event: 'enemy-death' }, ({ payload }) => {
       if (payload.from === session.clientId) return;
+      coins += Math.max(0, parseInt(payload.reward || '0', 10));
+      refreshUpgradeUi();
       removeRemoteEnemy(payload.id);
     });
 
     channel.on('broadcast', { event: 'castle-hit' }, ({ payload }) => {
       if (payload.from === session.clientId) return;
       applyRemoteCastleHit(payload.amount);
+    });
+
+    channel.on('broadcast', { event: 'shared-state' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      applySharedState(payload.state);
+    });
+
+    channel.on('broadcast', { event: 'state-request' }, ({ payload }) => {
+      if (!session.isHost || !payload || payload.from === session.clientId) return;
+      session.reportSharedStateNow();
     });
 
     channel.on('broadcast', { event: 'game-end' }, ({ payload }) => {
@@ -258,6 +468,15 @@
     channel.subscribe(async status => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ name: session.playerName, clientId: session.clientId });
+        if (!session.isHost) {
+          channel.send({
+            type: 'broadcast',
+            event: 'state-request',
+            payload: { from: session.clientId }
+          });
+        } else {
+          session.reportSharedStateNow();
+        }
       }
     });
 
@@ -277,7 +496,10 @@
         if (session.ended || typeof health === 'undefined') return;
         supabaseClient
           .from('rooms')
-          .update({ castle_hp: Math.max(0, Math.floor(health)) })
+          .update({
+            castle_hp: Math.max(0, Math.floor(health)),
+            castle_max_hp: Math.max(1, Math.floor(maxHealth))
+          })
           .eq('id', session.roomId)
           .then(() => {});
       }, 5000);

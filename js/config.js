@@ -77,6 +77,8 @@ let waitingTowerActionTarget = null;
 let attributeOrbs = {};
 let forgeSlots = [null, null, null];
 let forgeActiveSlot = null;
+let ownedRecipeBooks = {};
+const RECIPE_BOOK_DROP_CHANCE = 0.2;
 let inventoryView = 'tower';
 let isGamePaused = false;
 let isGameOver = false;
@@ -207,3 +209,20 @@ const ALL_ENEMY_ATTRIBUTES = [
   'heavyArmor',
   'assassin'
 ];
+
+function isTeamActive() {
+  return Boolean(window.TeamSession && window.TeamSession.isActive());
+}
+
+function isApplyingTeamSharedState() {
+  return Boolean(window.TeamSession && window.TeamSession.applyingSharedState);
+}
+
+function isTeamSimulationAuthority() {
+  return !isTeamActive() || window.TeamSession.isHost === true;
+}
+
+function reportTeamSharedState() {
+  if (!window.TeamSession || !window.TeamSession.isActive() || isApplyingTeamSharedState()) return;
+  window.TeamSession.reportSharedState();
+}

@@ -72,6 +72,34 @@ function findFusionRecipe(ingredients) {
   }) || null;
 }
 
+function maybeGrantRecipeBook() {
+  if (Math.random() >= RECIPE_BOOK_DROP_CHANCE) return;
+
+  const recipe = FUSION_RECIPES[Math.floor(Math.random() * FUSION_RECIPES.length)];
+  if (ownedRecipeBooks[recipe.result]) return;
+
+  ownedRecipeBooks[recipe.result] = true;
+  addRecipeBookToInventory(recipe);
+}
+
+function getRecipeBookHtml(recipe) {
+  return `
+    <p class="recipe-book-name">${recipe.result} 조합서</p>
+    <p class="recipe-book-ingredients">${recipe.ingredients.map(getAttributeText).join(' + ')}</p>
+    <p class="recipe-book-effect">${recipe.effect}</p>
+  `;
+}
+
+function addRecipeBookToInventory(recipe) {
+  const div = document.createElement('div');
+  div.className = 'recipe-book';
+  div.innerHTML = getRecipeBookHtml(recipe);
+  div.dataset.result = recipe.result;
+
+  createBar.appendChild(div);
+  updateInventoryView();
+}
+
 function getTowerDeleteCost(tower) {
   const lv = parseInt(tower.dataset.lv || '1');
   return lv * lv;
@@ -177,6 +205,7 @@ function disassembleWaitingTower() {
   waitingTowerActionTarget = null;
   updateInventoryView();
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function refreshDeleteTowerModal() {
@@ -208,6 +237,7 @@ function confirmDeleteTower() {
   closeDeleteTowerModal();
   updateInventoryView();
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function openFusionModal() {
@@ -242,6 +272,7 @@ function applyFusionOrb(attribute) {
   setTowerAttribute(tower, attribute);
   closeFusionModal();
   updateInventoryView();
+  reportTeamSharedState();
 }
 
 const FORGE_SLOT_BUTTONS = [forgeSlot0Btn, forgeSlot1Btn, forgeSlot2Btn];
@@ -312,4 +343,5 @@ function combineForge() {
   forgeSlots = [null, null, null];
   forgeActiveSlot = null;
   refreshBlacksmithModal();
+  reportTeamSharedState();
 }

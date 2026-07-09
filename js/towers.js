@@ -82,6 +82,7 @@ function setTowerAttribute(tower, attribute) {
   const star = parseInt(tower.dataset.star || '1');
   tower.innerHTML = getTowerHtml(lv, star, attribute);
   renderTowerHpBar(tower);
+  reportTeamSharedState();
 }
 
 function getTowerMaxHp(tower) {
@@ -120,6 +121,7 @@ function destroyTower(tower) {
   if (tower === selectedTower) closeUpgradeModal();
   tower.remove();
   refreshUpgradeUi();
+  reportTeamSharedState();
 }
 
 function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
@@ -224,6 +226,7 @@ function spawnBtn() {
     coins-=cost;
     spawnTower(spawnLv);
     refreshUpgradeUi();
+    reportTeamSharedState();
   }
 }
 
