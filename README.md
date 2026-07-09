@@ -229,6 +229,7 @@ create table rooms (
   password_hash text,
   host_client_id text not null,
   max_players int not null default 4,
+  allow_spectators boolean not null default true,
   status text not null default 'waiting',
   castle_max_hp numeric not null default 1000,
   castle_hp numeric not null default 1000,

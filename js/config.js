@@ -219,15 +219,19 @@ function isTeamActive() {
   return Boolean(window.TeamSession && window.TeamSession.isActive());
 }
 
+function isSpectatorMode() {
+  return Boolean(window.TeamSession && window.TeamSession.isActive() && window.TeamSession.isSpectator);
+}
+
 function isApplyingTeamSharedState() {
   return Boolean(window.TeamSession && window.TeamSession.applyingSharedState);
 }
 
 function isTeamSimulationAuthority() {
-  return !isTeamActive() || window.TeamSession.isHost === true;
+  return !isTeamActive() || (!isSpectatorMode() && window.TeamSession.isHost === true);
 }
 
 function reportTeamSharedState() {
-  if (!window.TeamSession || !window.TeamSession.isActive() || isApplyingTeamSharedState()) return;
+  if (!window.TeamSession || !window.TeamSession.isActive() || isSpectatorMode() || isApplyingTeamSharedState()) return;
   window.TeamSession.reportSharedState();
 }

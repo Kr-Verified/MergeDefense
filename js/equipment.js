@@ -49,6 +49,7 @@ function getEquipmentBonus(tower, stat) {
 }
 
 function spawnEquipment() {
+  if (isSpectatorMode()) return;
   const equipment = createEquipment();
   addEquipmentToInventory(equipment);
   reportTeamSharedState();
@@ -99,6 +100,7 @@ function refreshEquipmentSlots() {
 }
 
 function equipDraggedEquipment(slotIndex) {
+  if (isSpectatorMode()) return;
   if (!selectedTower || !draggedEquipment) return;
   if (getTowerUpgradeTotal(selectedTower) < EQUIPMENT_SLOT_UNLOCK_LEVELS[slotIndex]) return;
 
@@ -121,6 +123,7 @@ function equipDraggedEquipment(slotIndex) {
 }
 
 function unequipEquipment(slotIndex) {
+  if (isSpectatorMode()) return;
   if (!selectedTower) return;
 
   const equipment = getTowerEquipment(selectedTower);
@@ -145,6 +148,10 @@ function releaseTowerEquipment(tower) {
 
 function makeEquipmentDraggable(elem) {
   elem.addEventListener('dragstart', e => {
+    if (isSpectatorMode()) {
+      e.preventDefault();
+      return;
+    }
     draggedEquipment = elem;
     draggedTower = null;
   });
@@ -159,6 +166,7 @@ function makeEquipmentDraggable(elem) {
 
   elem.addEventListener('drop', e => {
     e.preventDefault();
+    if (isSpectatorMode()) return;
     if (!draggedEquipment || draggedEquipment === elem) return;
     mergeEquipment(draggedEquipment, elem);
   });
@@ -173,6 +181,7 @@ function getEquipmentFromElement(elem) {
 }
 
 function mergeEquipment(firstElem, secondElem) {
+  if (isSpectatorMode()) return;
   if (!firstElem.classList.contains('equipment') || !secondElem.classList.contains('equipment')) return;
   if (firstElem.dataset.type !== secondElem.dataset.type) return;
 

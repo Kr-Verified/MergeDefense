@@ -76,6 +76,7 @@ function getTowerHtml(lv, star, attribute = 'none') {
 }
 
 function setTowerAttribute(tower, attribute) {
+  if (isSpectatorMode()) return;
   tower.dataset.attribute = attribute;
   tower.className = tower.className.replace(/attribute-\S+/, `attribute-${getAttributeClass(attribute)}`);
   const lv = parseInt(tower.dataset.lv);
@@ -125,6 +126,7 @@ function destroyTower(tower) {
 }
 
 function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
+  if (isSpectatorMode()) return;
   const tower = createTower(lv, star, attribute);
   const div = document.createElement('div');
   div.className = `tower star-${tower.star} attribute-${getAttributeClass(tower.attribute)}`;
@@ -221,6 +223,7 @@ function refreshCreateUpgradeButton() {
 }
 
 function spawnBtn() {
+  if (isSpectatorMode()) return;
   const cost = getTowerCreateCost();
   if (coins>=cost) {
     coins-=cost;

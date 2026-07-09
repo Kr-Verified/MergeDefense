@@ -751,6 +751,16 @@ body {
   transform: translateY(-1px);
 }
 
+.spectator-mode #create-bar,
+.spectator-mode #skill-bar {
+  display: none;
+}
+
+.spectator-mode .give-up-btn {
+  border-color: rgba(89, 209, 197, 0.6);
+  background: linear-gradient(135deg, #14b8a6, #2563eb);
+}
+
 #survival-time,
 #tower-count {
   color: #ffffff;

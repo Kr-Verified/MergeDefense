@@ -73,6 +73,7 @@ function findFusionRecipe(ingredients) {
 }
 
 function maybeGrantRecipeBook() {
+  if (isSpectatorMode()) return;
   if (Math.random() >= RECIPE_BOOK_DROP_CHANCE) return;
 
   const recipe = FUSION_RECIPES[Math.floor(Math.random() * FUSION_RECIPES.length)];
@@ -142,6 +143,7 @@ function getOrbChipHtml(entry) {
 }
 
 function openTowerActionPopup(tower) {
+  if (isSpectatorMode()) return;
   waitingTowerActionTarget = tower;
   renderTowerActionPopup();
   towerActionPopup.classList.remove('hidden');
@@ -193,6 +195,7 @@ function cancelTowerAction() {
 }
 
 function disassembleWaitingTower() {
+  if (isSpectatorMode()) return;
   const tower = waitingTowerActionTarget;
   if (!tower) return;
 
@@ -216,6 +219,7 @@ function refreshDeleteTowerModal() {
 }
 
 function openDeleteTowerModal() {
+  if (isSpectatorMode()) return;
   if (!waitingTowerActionTarget) return;
   refreshDeleteTowerModal();
   deleteTowerModal.classList.remove('hidden');
@@ -227,6 +231,7 @@ function closeDeleteTowerModal() {
 }
 
 function confirmDeleteTower() {
+  if (isSpectatorMode()) return;
   if (!waitingTowerActionTarget) return;
 
   const cost = getTowerDeleteCost(waitingTowerActionTarget);
@@ -241,6 +246,7 @@ function confirmDeleteTower() {
 }
 
 function openFusionModal() {
+  if (isSpectatorMode()) return;
   if (!waitingTowerActionTarget) return;
   renderFusionModal();
   fusionModal.classList.remove('hidden');
@@ -265,6 +271,7 @@ function renderFusionModal() {
 }
 
 function applyFusionOrb(attribute) {
+  if (isSpectatorMode()) return;
   const tower = waitingTowerActionTarget;
   if (!tower || (attributeOrbs[attribute] || 0) < 1) return;
 
@@ -278,6 +285,7 @@ function applyFusionOrb(attribute) {
 const FORGE_SLOT_BUTTONS = [forgeSlot0Btn, forgeSlot1Btn, forgeSlot2Btn];
 
 function openBlacksmithModal() {
+  if (isSpectatorMode()) return;
   forgeSlots = [null, null, null];
   forgeActiveSlot = null;
   refreshBlacksmithModal();
@@ -317,6 +325,7 @@ function hasEnoughOrbsForForge(recipe) {
 }
 
 function selectForgeSlot(index) {
+  if (isSpectatorMode()) return;
   if (forgeSlots[index]) {
     forgeSlots[index] = null;
     forgeActiveSlot = null;
@@ -328,6 +337,7 @@ function selectForgeSlot(index) {
 }
 
 function assignForgeOrb(attribute) {
+  if (isSpectatorMode()) return;
   if (forgeActiveSlot === null || (attributeOrbs[attribute] || 0) < 1) return;
   forgeSlots[forgeActiveSlot] = attribute;
   forgeActiveSlot = null;
@@ -335,6 +345,7 @@ function assignForgeOrb(attribute) {
 }
 
 function combineForge() {
+  if (isSpectatorMode()) return;
   const recipe = findFusionRecipe(forgeSlots);
   if (!recipe || !hasEnoughOrbsForForge(recipe)) return;
 

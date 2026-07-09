@@ -31,11 +31,27 @@ button:hover {
   background-color: aquamarine;
 }
 
+#solo-summary,
 #team-summary {
   color: #94a3b8;
   font-size: 24px;
   font-weight: bold;
   margin: 12px 0 28px;
+  text-align: center;
+}
+
+#team-roster {
+  margin-bottom: 6px;
+}
+
+.roster-self {
+  color: gold;
+  font-weight: 900;
+}
+
+#share-btn {
+  background: linear-gradient(to right, #7c3aed, #db2777);
+  margin-bottom: 16px;
 }
 
 .hidden {

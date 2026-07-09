@@ -7,6 +7,10 @@ function getCurrentGameSaveKey() {
   return roomId ? `mergedefense:team:${roomId}` : SOLO_SAVE_KEY;
 }
 
+function isPersistenceDisabled() {
+  return Boolean(window.TeamSession && window.TeamSession.isActive() && window.TeamSession.isSpectator);
+}
+
 function serializeElementDataset(element) {
   return Object.keys(element.dataset).reduce((data, key) => {
     data[key] = element.dataset[key];
@@ -266,7 +270,7 @@ function applyGameState(state) {
 }
 
 function saveGameStateToStorage() {
-  if (isGameOver) return;
+  if (isGameOver || isPersistenceDisabled()) return;
 
   try {
     localStorage.setItem(getCurrentGameSaveKey(), JSON.stringify(serializeGameState()));
@@ -276,6 +280,7 @@ function saveGameStateToStorage() {
 }
 
 function loadGameStateFromStorage() {
+  if (isPersistenceDisabled()) return null;
   try {
     const raw = localStorage.getItem(getCurrentGameSaveKey());
     return raw ? JSON.parse(raw) : null;
@@ -290,6 +295,7 @@ function restoreSavedGameState() {
 }
 
 function clearSavedGameState() {
+  if (isPersistenceDisabled()) return;
   try {
     localStorage.removeItem(getCurrentGameSaveKey());
   } catch (error) {
@@ -308,6 +314,7 @@ function clearAllSavedGameStates() {
 }
 
 function startGameAutosave() {
+  if (isPersistenceDisabled()) return;
   restoreSavedGameState();
   setInterval(saveGameStateToStorage, 1000);
   window.addEventListener('beforeunload', saveGameStateToStorage);

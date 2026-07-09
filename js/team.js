@@ -1,9 +1,11 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const roomIdParam = params.get('room');
+  const isSpectatorParam = params.get('guest') === '1';
 
   const session = {
     active: Boolean(roomIdParam),
+    isSpectator: isSpectatorParam,
     isHost: null,
     roomId: roomIdParam ? parseInt(roomIdParam, 10) : null,
     clientId: localStorage.getItem('clientId') || null,
@@ -21,7 +23,7 @@
 
   window.TeamSession = session;
 
-  if (!session.active || !session.clientId || Number.isNaN(session.roomId)) {
+  if (!session.active || (!session.clientId && !session.isSpectator) || Number.isNaN(session.roomId)) {
     session.active = false;
     return;
   }
@@ -40,7 +42,7 @@
   }
 
   session.reportEnemySpawned = function (enemy) {
-    if (!session.channel) return;
+    if (!session.channel || session.isSpectator) return;
     session.channel.send({
       type: 'broadcast',
       event: 'enemy-spawn',
@@ -49,7 +51,7 @@
   };
 
   session.reportEnemyHit = function (enemyId, amount) {
-    if (!session.channel) return;
+    if (!session.channel || session.isSpectator) return;
     session.channel.send({
       type: 'broadcast',
       event: 'enemy-hit',
@@ -58,7 +60,7 @@
   };
 
   session.reportEnemyDeath = function (enemyId, reward = 0) {
-    if (!session.channel) return;
+    if (!session.channel || session.isSpectator) return;
     session.channel.send({
       type: 'broadcast',
       event: 'enemy-death',
@@ -67,7 +69,7 @@
   };
 
   session.reportCastleHit = function (amount) {
-    if (!session.channel) return;
+    if (!session.channel || session.isSpectator) return;
     session.channel.send({
       type: 'broadcast',
       event: 'castle-hit',
@@ -76,7 +78,7 @@
   };
 
   session.reportCursorMove = function (xRatio, yRatio) {
-    if (!session.channel) return;
+    if (!session.channel || session.isSpectator) return;
     session.channel.send({
       type: 'broadcast',
       event: 'cursor-move',
@@ -105,7 +107,7 @@
   }
 
   session.reportSharedState = function () {
-    if (!session.active || !session.channel || session.applyingSharedState || session.ended) return;
+    if (!session.active || session.isSpectator || !session.channel || session.applyingSharedState || session.ended) return;
 
     clearTimeout(session.pendingSharedStateTimer);
     session.pendingSharedStateTimer = setTimeout(() => {
@@ -122,7 +124,7 @@
   };
 
   session.reportSharedStateNow = function () {
-    if (!session.active || !session.channel || session.applyingSharedState || session.ended) return;
+    if (!session.active || session.isSpectator || !session.channel || session.applyingSharedState || session.ended) return;
     clearTimeout(session.pendingSharedStateTimer);
     const state = serializeSharedState();
     session.sharedStateVersion = state.version;
@@ -168,6 +170,7 @@
   }
 
   function updateSelfCoinInfo() {
+    if (session.isSpectator) return;
     teamCoinInfo[session.clientId] = {
       name: session.playerName,
       coins: typeof coins === 'number' ? coins : 0
@@ -249,11 +252,25 @@
     if (typeof clearSavedGameState === 'function') clearSavedGameState();
     removeAllRemoteCursors();
     removeTeamCoinList();
+
+    const presenceState = session.channel ? session.channel.presenceState() : {};
+    const mateNames = Object.entries(presenceState)
+      .filter(([clientId]) => clientId !== session.clientId)
+      .map(([, entries]) => (entries && entries[0] && entries[0].name) || 'Guest');
+
     if (session.channel) {
       supabaseClient.removeChannel(session.channel);
       session.channel = null;
     }
-    window.location.href = `fail.html?team=1&time=${Math.max(0, Math.floor(seconds || 0))}`;
+
+    const params = new URLSearchParams({
+      team: '1',
+      time: String(Math.max(0, Math.floor(seconds || 0))),
+      me: session.playerName || 'Guest'
+    });
+    mateNames.forEach(name => params.append('mate', name));
+
+    window.location.href = `fail.html?${params.toString()}`;
   }
 
   session.endGame = async function (seconds) {
@@ -284,7 +301,7 @@
 
     const badge = document.createElement('div');
     badge.id = 'team-mode-badge';
-    badge.textContent = session.isHost ? '팀 플레이 · 호스트' : '팀 플레이';
+    badge.textContent = session.isSpectator ? '관전 모드' : session.isHost ? '팀 플레이 · 호스트' : '팀 플레이';
     nameEl.insertAdjacentElement('afterend', badge);
   }
 
@@ -305,7 +322,7 @@
   async function init() {
     const { data: roomRows, error } = await supabaseClient
       .from('rooms')
-      .select('id,castle_hp,castle_max_hp,status,host_client_id')
+      .select('id,castle_hp,castle_max_hp,status,host_client_id,allow_spectators')
       .eq('id', session.roomId)
       .limit(1);
 
@@ -316,7 +333,13 @@
     }
 
     const room = roomRows[0];
-    session.isHost = room.host_client_id === session.clientId;
+    if (session.isSpectator && (room.status !== 'playing' || room.allow_spectators !== true)) {
+      session.active = false;
+      window.location.href = 'room.html';
+      return;
+    }
+
+    session.isHost = !session.isSpectator && room.host_client_id === session.clientId;
 
     if (typeof maxHealth !== 'undefined') {
       maxHealth = room.castle_max_hp || maxHealth;
@@ -325,7 +348,7 @@
     }
 
     const channel = supabaseClient.channel(`room-${session.roomId}`, {
-      config: { broadcast: { self: false }, presence: { key: session.clientId } }
+      config: { broadcast: { self: false }, presence: { key: session.clientId || `guest-${Date.now()}` } }
     });
 
     channel.on('broadcast', { event: 'enemy-spawn' }, ({ payload }) => {
@@ -389,7 +412,9 @@
 
     channel.subscribe(async status => {
       if (status === 'SUBSCRIBED') {
-        await channel.track({ name: session.playerName, clientId: session.clientId });
+        if (!session.isSpectator) {
+          await channel.track({ name: session.playerName, clientId: session.clientId });
+        }
         updateSelfCoinInfo();
         if (!session.isHost) {
           channel.send({
@@ -412,7 +437,7 @@
 
     let lastCursorSentAt = 0;
     document.addEventListener('mousemove', e => {
-      if (!session.channel || session.ended) return;
+      if (!session.channel || session.ended || session.isSpectator) return;
       const now = Date.now();
       if (now - lastCursorSentAt < 80) return;
       lastCursorSentAt = now;

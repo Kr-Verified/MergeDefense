@@ -221,6 +221,8 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist < 15) {
+      if (!isTeamSimulationAuthority()) return;
+
       const now = Date.now();
       const lastCastleAttack = parseInt(enemyDiv.dataset.lastCastleAttack || '0');
       if (now - lastCastleAttack < 1000 / gameSpeed) return;

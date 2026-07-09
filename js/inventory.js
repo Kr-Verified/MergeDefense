@@ -1,8 +1,15 @@
 function makeDraggable(elem) {
-  elem.addEventListener('dragstart', e => { draggedTower = elem; });
+  elem.addEventListener('dragstart', e => {
+    if (isSpectatorMode()) {
+      e.preventDefault();
+      return;
+    }
+    draggedTower = elem;
+  });
 
   elem.addEventListener('click', e => {
     e.stopPropagation();
+    if (isSpectatorMode()) return;
     if (!elem.classList.contains('tower')) return;
     if (board.contains(elem)) { openUpgradeModal(elem); return; }
     if (createBar.contains(elem)) openTowerActionPopup(elem);
@@ -14,6 +21,7 @@ function makeDraggable(elem) {
     e.preventDefault();
 
     if (!draggedTower || draggedTower === elem) return;
+    if (isSpectatorMode()) return;
     if (!draggedTower.classList.contains('tower') || !elem.classList.contains('tower')) return;
 
     const draggedLv = parseInt(draggedTower.dataset.lv);
@@ -92,6 +100,10 @@ function move(from, to) {
   return function (e) {
     e.preventDefault();
     if (!draggedTower) return;
+    if (isSpectatorMode()) {
+      draggedTower = null;
+      return;
+    }
 
     if (from.contains(draggedTower)) {
       if (to === board && getInstalledTowerCount() >= towerLimit) {

@@ -158,6 +158,7 @@ function refreshGlobalUpgradeButtons() {
 }
 
 function openUpgradeModal(tower) {
+  if (isSpectatorMode()) return;
   if (!board.contains(tower)) return;
   if (selectedTower && selectedTower !== tower) selectedTower.classList.remove('selected');
   selectedTower = tower;
@@ -177,6 +178,7 @@ function closeUpgradeModal() {
 }
 
 function deleteSelectedTower() {
+  if (isSpectatorMode()) return;
   if (!selectedTower) return;
 
   const cost = getTowerDeleteCost(selectedTower);
@@ -315,6 +317,7 @@ function refreshTargetingOptions() {
 }
 
 function setSelectedTowerTargetPriority(priority) {
+  if (isSpectatorMode()) return;
   if (!selectedTower || !TARGET_PRIORITIES.includes(priority)) return;
 
   selectedTower.dataset.targetPriority = priority;
@@ -323,6 +326,7 @@ function setSelectedTowerTargetPriority(priority) {
 }
 
 function upgradeSelectedTower(type) {
+  if (isSpectatorMode()) return;
   if (!selectedTower || !document.body.contains(selectedTower)) return;
 
   const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
@@ -339,6 +343,7 @@ function upgradeSelectedTower(type) {
 }
 
 function upgradeSelectedTowerWithTime(type) {
+  if (isSpectatorMode()) return;
   if (!selectedTower || !document.body.contains(selectedTower)) return;
 
   const count = getSelectedTimeUpgradeCount(type);
@@ -355,6 +360,7 @@ function upgradeSelectedTowerWithTime(type) {
 }
 
 function upgradeSelectedTowerStarWithTime() {
+  if (isSpectatorMode()) return;
   if (!selectedTower || !document.body.contains(selectedTower)) return;
 
   const currentStar = parseInt(selectedTower.dataset.star || '1');
@@ -385,6 +391,7 @@ function upgradeSelectedTowerStarWithTime() {
 }
 
 function upgradeGlobalTowerStat(type) {
+  if (isSpectatorMode()) return;
   const amountKey = type === 'speed' ? 'globalSpeed' : type === 'power' ? 'globalPower' : 'globalRange';
   const count = getSelectedUpgradeCount(amountKey);
   const cost = getSelectedUpgradeCost(amountKey);
@@ -402,6 +409,7 @@ function upgradeGlobalTowerStat(type) {
 }
 
 function upgradeCriticalStat(type) {
+  if (isSpectatorMode()) return;
   const amountKey = type === 'chance' ? 'criticalChance' : 'criticalDamage';
   const count = getSelectedUpgradeCount(amountKey);
   const cost = getSelectedUpgradeCost(amountKey);
@@ -417,6 +425,7 @@ function upgradeCriticalStat(type) {
 }
 
 function upgradeCastleHealth() {
+  if (isSpectatorMode()) return;
   const count = getSelectedUpgradeCount('castleHealth');
   const cost = getSelectedUpgradeCost('castleHealth');
   if (count < 1) return;
@@ -432,6 +441,7 @@ function upgradeCastleHealth() {
 }
 
 function upgradeTowerLimit() {
+  if (isSpectatorMode()) return;
   const count = getSelectedUpgradeCount('towerLimit');
   const cost = getSelectedUpgradeCost('towerLimit');
   if (count < 1) return;

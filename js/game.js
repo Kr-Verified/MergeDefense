@@ -60,7 +60,12 @@ async function endGame() {
   } catch (error) {
     console.error('Failed to save ranking', error);
   } finally {
-    window.location.href = 'fail.html';
+    const playerName = localStorage.getItem('name') || 'Guest';
+    const params = new URLSearchParams({
+      name: playerName,
+      time: String(Math.max(0, Math.floor(survivedSeconds || 0)))
+    });
+    window.location.href = `fail.html?${params.toString()}`;
   }
 }
 
@@ -84,6 +89,18 @@ function confirmGiveUp() {
   closeGiveUpModal();
   if (typeof clearAllSavedGameStates === 'function') clearAllSavedGameStates();
   endGame();
+}
+
+function leaveSpectatorMode() {
+  window.location.href = 'room.html';
+}
+
+function applySpectatorMode() {
+  if (!isSpectatorMode()) return;
+
+  document.body.classList.add('spectator-mode');
+  giveUpBtn.textContent = '뒤로가기';
+  document.getElementById('name').textContent = 'Guest';
 }
 
 function refreshUpgradeUi() {
@@ -198,7 +215,13 @@ towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
 towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
 itemViewBtn.addEventListener('click', () => setInventoryView('item'));
-giveUpBtn.addEventListener('click', openGiveUpModal);
+giveUpBtn.addEventListener('click', () => {
+  if (isSpectatorMode()) {
+    leaveSpectatorMode();
+    return;
+  }
+  openGiveUpModal();
+});
 closeGiveUpModalBtn.addEventListener('click', closeGiveUpModal);
 cancelGiveUpBtn.addEventListener('click', closeGiveUpModal);
 confirmGiveUpBtn.addEventListener('click', confirmGiveUp);
@@ -279,6 +302,7 @@ setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
 setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
 setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
 startGameAutosave();
+applySpectatorMode();
 updateHealthText();
 updateSpeedModeButton();
 priceBar.textContent = `${getTowerCreateCost()} $`;

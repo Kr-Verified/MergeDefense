@@ -5,6 +5,7 @@ const roomListEl = document.getElementById('room-list');
 const createRoomNameInput = document.getElementById('create-room-name');
 const createRoomPasswordInput = document.getElementById('create-room-password');
 const createRoomMaxSelect = document.getElementById('create-room-max');
+const createRoomSpectatorsInput = document.getElementById('create-room-spectators');
 const createRoomBtn = document.getElementById('create-room-btn');
 const joinRoomCodeInput = document.getElementById('join-room-code');
 const joinRoomPasswordInput = document.getElementById('join-room-password');
@@ -79,8 +80,8 @@ async function fetchRoomList() {
 
   const { data, error } = await supabaseClient
     .from('rooms')
-    .select('id,code,name,max_players,password_hash,status,room_players(count)')
-    .eq('status', 'waiting')
+    .select('id,code,name,max_players,password_hash,status,allow_spectators,room_players(count)')
+    .in('status', ['waiting', 'playing'])
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -97,11 +98,19 @@ async function fetchRoomList() {
   roomListEl.innerHTML = data.map(room => {
     const playerCount = room.room_players?.[0]?.count ?? 0;
     const locked = room.password_hash ? '🔒 ' : '';
+    const isWaiting = room.status === 'waiting';
+    const canWatch = room.status === 'playing' && room.allow_spectators === true;
+    const actionButton = isWaiting
+      ? `<button type="button" class="ghost fill-code-btn" data-code="${room.code}">참가</button>`
+      : canWatch
+        ? `<button type="button" class="watch watch-room-btn" data-room-id="${room.id}">관전</button>`
+        : '';
+    const statusText = isWaiting ? `${playerCount}/${room.max_players}` : '진행 중';
     return `
       <div class="room-row">
         <span class="room-name">${locked}${escapeHtml(room.name)}</span>
-        <span class="room-meta">${playerCount}/${room.max_players}</span>
-        <button type="button" class="ghost fill-code-btn" data-code="${room.code}">참가</button>
+        <span class="room-meta">${statusText}</span>
+        ${actionButton}
       </div>
     `;
   }).join('');
@@ -110,6 +119,12 @@ async function fetchRoomList() {
     button.addEventListener('click', () => {
       joinRoomCodeInput.value = button.dataset.code;
       joinRoomPasswordInput.focus();
+    });
+  });
+
+  [...roomListEl.querySelectorAll('.watch-room-btn')].forEach(button => {
+    button.addEventListener('click', () => {
+      window.location.href = `main.html?room=${button.dataset.roomId}&guest=1`;
     });
   });
 }
@@ -129,6 +144,7 @@ async function createRoom() {
   const name = createRoomNameInput.value.trim() || `${ensurePlayerName()}의 방`;
   const password = createRoomPasswordInput.value;
   const maxPlayers = parseInt(createRoomMaxSelect.value, 10);
+  const allowSpectators = createRoomSpectatorsInput.checked;
   const clientId = ensureClientId();
   const playerName = ensurePlayerName();
   if (!playerName) return;
@@ -150,6 +166,7 @@ async function createRoom() {
           password_hash: passwordHash,
           host_client_id: clientId,
           max_players: maxPlayers,
+          allow_spectators: allowSpectators,
           status: 'waiting',
           castle_max_hp: 1000,
           castle_hp: 1000

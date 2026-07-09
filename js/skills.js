@@ -35,6 +35,7 @@ const SKILLS = {
 const skillLastUsed = { barrage: 0, frost: 0, goldRush: 0, repair: 0 };
 
 function useSkill(key) {
+  if (isSpectatorMode()) return;
   if (isGamePaused || isGameOver) return;
 
   const skill = SKILLS[key];
