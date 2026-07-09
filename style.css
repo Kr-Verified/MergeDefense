@@ -701,6 +701,42 @@ body {
   text-overflow: ellipsis;
 }
 
+#remote-cursor-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.remote-cursor {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  transition: left 0.08s linear, top 0.08s linear;
+  pointer-events: none;
+}
+
+.remote-cursor-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.55);
+}
+
+.remote-cursor-name {
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: white;
+  background-color: rgba(10, 12, 24, 0.82);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .modal {
   position: fixed;
   top: 0;
@@ -833,6 +869,12 @@ body {
 
 .sell-btn:hover {
   transform: translateY(-1px);
+}
+
+.sell-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .targeting-panel {
@@ -1012,7 +1054,7 @@ body {
 
 .delete-tower-cost {
   margin: 0 0 18px 0;
-  color: #ffe066;
+  color: #ff7373;
   font-weight: 900;
 }
 

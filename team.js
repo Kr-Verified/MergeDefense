@@ -72,7 +72,73 @@
     });
   };
 
+  session.reportCursorMove = function (xRatio, yRatio) {
+    if (!session.channel) return;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'cursor-move',
+      payload: { from: session.clientId, name: session.playerName, xRatio: xRatio, yRatio: yRatio }
+    });
+  };
+
+  let cursorLayer = null;
+  const remoteCursors = {};
+
+  function hashStringToHue(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i += 1) {
+      hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+    }
+    return hash % 360;
+  }
+
+  function ensureCursorLayer() {
+    if (cursorLayer) return cursorLayer;
+    cursorLayer = document.createElement('div');
+    cursorLayer.id = 'remote-cursor-layer';
+    document.body.appendChild(cursorLayer);
+    return cursorLayer;
+  }
+
+  function upsertRemoteCursor(clientId, name, xRatio, yRatio) {
+    if (typeof xRatio !== 'number' || typeof yRatio !== 'number') return;
+
+    let cursor = remoteCursors[clientId];
+    if (!cursor) {
+      const el = document.createElement('div');
+      el.className = 'remote-cursor';
+      el.innerHTML = '<div class="remote-cursor-dot"></div><div class="remote-cursor-name"></div>';
+      el.querySelector('.remote-cursor-dot').style.backgroundColor = `hsl(${hashStringToHue(clientId)}, 75%, 58%)`;
+      ensureCursorLayer().appendChild(el);
+      cursor = { el: el };
+      remoteCursors[clientId] = cursor;
+    }
+
+    cursor.el.querySelector('.remote-cursor-name').textContent = name || 'Guest';
+    cursor.el.style.left = `${xRatio * window.innerWidth}px`;
+    cursor.el.style.top = `${yRatio * window.innerHeight}px`;
+  }
+
+  function removeRemoteCursor(clientId) {
+    const cursor = remoteCursors[clientId];
+    if (!cursor) return;
+    cursor.el.remove();
+    delete remoteCursors[clientId];
+  }
+
+  function pruneRemoteCursors(presenceState) {
+    const activeIds = new Set(Object.keys(presenceState || {}));
+    Object.keys(remoteCursors).forEach(clientId => {
+      if (!activeIds.has(clientId)) removeRemoteCursor(clientId);
+    });
+  }
+
+  function removeAllRemoteCursors() {
+    Object.keys(remoteCursors).forEach(removeRemoteCursor);
+  }
+
   function finishTeamGame(seconds) {
+    removeAllRemoteCursors();
     if (session.channel) {
       supabaseClient.removeChannel(session.channel);
       session.channel = null;
@@ -178,8 +244,15 @@
       finishTeamGame(payload.seconds);
     });
 
+    channel.on('broadcast', { event: 'cursor-move' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      upsertRemoteCursor(payload.from, payload.name, payload.xRatio, payload.yRatio);
+    });
+
     channel.on('presence', { event: 'sync' }, () => {
-      renderTeamPlayerList(channel.presenceState());
+      const presenceState = channel.presenceState();
+      renderTeamPlayerList(presenceState);
+      pruneRemoteCursors(presenceState);
     });
 
     channel.subscribe(async status => {
@@ -189,6 +262,15 @@
     });
 
     session.channel = channel;
+
+    let lastCursorSentAt = 0;
+    document.addEventListener('mousemove', e => {
+      if (!session.channel || session.ended) return;
+      const now = Date.now();
+      if (now - lastCursorSentAt < 80) return;
+      lastCursorSentAt = now;
+      session.reportCursorMove(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
+    });
 
     if (session.isHost) {
       setInterval(() => {

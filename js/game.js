@@ -1,0 +1,255 @@
+function updateSurvivalTime() {
+  survivalTimeBar.textContent = `${survivedSeconds}초`;
+}
+
+function updateTopStatus() {
+  updateSurvivalTime();
+  coinBar.textContent = `${coins} $`;
+  towerCountBar.textContent = `${getInstalledTowerCount()} / ${towerLimit} 포탑`;
+}
+
+function updateHealthText() {
+  document.getElementById('health').textContent = `${Math.ceil(health)} / ${maxHealth} Hp`;
+}
+
+function getSupabaseConfig() {
+  return window.SUPABASE_CONFIG || {};
+}
+
+function isSupabaseConfigured() {
+  const config = getSupabaseConfig();
+  return Boolean(config.url && (config.publicKey || config.anonKey) && config.rankingsTable);
+}
+
+async function saveRanking() {
+  if (!isSupabaseConfigured()) return;
+
+  const config = getSupabaseConfig();
+  const supabaseKey = config.publicKey || config.anonKey;
+  const playerName = localStorage.getItem('name') || 'Guest';
+
+  await fetch(`${config.url}/rest/v1/${config.rankingsTable}`, {
+    method: 'POST',
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify({
+      name: playerName,
+      survival_time: survivedSeconds
+    })
+  });
+}
+
+async function endGame() {
+  if (isGameOver) return;
+
+  isGameOver = true;
+  updateGamePausedState();
+
+  if (window.TeamSession && window.TeamSession.isActive()) {
+    await window.TeamSession.endGame(survivedSeconds);
+    return;
+  }
+
+  try {
+    await saveRanking();
+  } catch (error) {
+    console.error('Failed to save ranking', error);
+  } finally {
+    window.location.href = 'fail.html';
+  }
+}
+
+function updateGamePausedState() {
+  isGamePaused = isGameOver || isUpgradeModalOpen || gameSpeed === 0;
+}
+
+function getInstalledTowerCount() {
+  return [...board.querySelectorAll('.tower')].length;
+}
+
+function refreshUpgradeUi() {
+  updateTopStatus();
+  refreshCreateUpgradeButton();
+  refreshGlobalUpgradeButtons();
+  if (selectedTower) refreshUpgradeModal();
+  if (waitingTowerActionTarget && !deleteTowerModal.classList.contains('hidden')) refreshDeleteTowerModal();
+}
+
+function recoverCastleHealth() {
+  if (isGamePaused) return;
+  if (health >= maxHealth) return;
+
+  const amount = maxHealth * 0.01;
+  health = Math.min(maxHealth, health + amount);
+  updateHealthText();
+  if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
+}
+
+function recoverCastleHealthByAmount(amount) {
+  if (amount <= 0 || health >= maxHealth) return;
+
+  health = Math.min(maxHealth, health + amount);
+  updateHealthText();
+  if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(-amount);
+}
+
+function updateSpeedModeButton() {
+  speedModeBtn.textContent = `${gameSpeed}배속`;
+  speedModeBtn.classList.toggle('active', gameSpeed !== 1);
+}
+
+function resetGameIntervals() {
+  if (enemySpawnInterval) clearInterval(enemySpawnInterval);
+  if (towerAttackInterval) clearInterval(towerAttackInterval);
+  if (castleRecoverInterval) clearInterval(castleRecoverInterval);
+  if (survivalTimerInterval) clearInterval(survivalTimerInterval);
+  if (towerTimeInterval) clearInterval(towerTimeInterval);
+  if (bossRecoverInterval) clearInterval(bossRecoverInterval);
+  if (enemyTowerCombatInterval) clearInterval(enemyTowerCombatInterval);
+  updateGamePausedState();
+  if (gameSpeed === 0) return;
+
+  const isTeamMode = window.TeamSession && window.TeamSession.isActive();
+  const isWaveAuthority = !isTeamMode || window.TeamSession.isHost === true;
+
+  enemySpawnInterval = isWaveAuthority ? setInterval(spawnEnemy, 5000 / gameSpeed) : null;
+  towerAttackInterval = setInterval(towerAttackLoop, 100 / gameSpeed);
+  castleRecoverInterval = isWaveAuthority ? setInterval(recoverCastleHealth, 1000 / gameSpeed) : null;
+  towerTimeInterval = setInterval(towerTimeLoop, 1000 / gameSpeed);
+  bossRecoverInterval = isWaveAuthority ? setInterval(bossRecoverLoop, 1000 / gameSpeed) : null;
+  enemyTowerCombatInterval = setInterval(enemyTowerCombatLoop, 200 / gameSpeed);
+  survivalTimerInterval = setInterval(() => {
+    if (isGamePaused) return;
+
+    survivedSeconds += 1;
+    updateTopStatus();
+    refreshSkillBar();
+  }, 1000 / gameSpeed);
+}
+
+function toggleSpeedMode() {
+  const currentIndex = GAME_SPEED_OPTIONS.indexOf(gameSpeed);
+  gameSpeed = GAME_SPEED_OPTIONS[(currentIndex + 1) % GAME_SPEED_OPTIONS.length];
+  updateGamePausedState();
+  updateSpeedModeButton();
+  resetGameIntervals();
+  refreshSkillBar();
+}
+
+
+function upgradeCreate() {
+  const count = getSelectedUpgradeCount('create');
+  const cost = getSelectedUpgradeCost('create');
+  if (count < 1) return;
+  if ( coins >= cost ) {
+    coins -= cost;
+    spawnLv += count;
+    spawnLvExpress.textContent = `${spawnLv} 생성`;
+    priceBar.textContent = `${getTowerCreateCost()} $`
+    refreshUpgradeUi();
+  }
+}
+
+closeUpgradeModalBtn.addEventListener('click', closeUpgradeModal);
+sellTowerBtn.addEventListener('click', sellSelectedTower);
+upgradeModal.addEventListener('click', e => {
+  if (e.target === upgradeModal) closeUpgradeModal();
+});
+board.addEventListener('click', closeUpgradeModal);
+upgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTower('speed'));
+upgradePowerBtn.addEventListener('click', () => upgradeSelectedTower('power'));
+upgradeRangeBtn.addEventListener('click', () => upgradeSelectedTower('range'));
+timeUpgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('speed'));
+timeUpgradePowerBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('power'));
+timeUpgradeRangeBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('range'));
+timeUpgradeStarBtn.addEventListener('click', upgradeSelectedTowerStarWithTime);
+globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
+globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
+globalRangeBtn.addEventListener('click', () => upgradeGlobalTowerStat('range'));
+criticalChanceBtn.addEventListener('click', () => upgradeCriticalStat('chance'));
+criticalDamageBtn.addEventListener('click', () => upgradeCriticalStat('damage'));
+castleHealthBtn.addEventListener('click', upgradeCastleHealth);
+towerLimitBtn.addEventListener('click', upgradeTowerLimit);
+speedModeBtn.addEventListener('click', toggleSpeedMode);
+towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
+itemViewBtn.addEventListener('click', () => setInventoryView('item'));
+
+towerActionDeleteBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (!waitingTowerActionTarget) return;
+  hideTowerActionPopup();
+  openDeleteTowerModal();
+});
+towerActionDisassembleBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  disassembleWaitingTower();
+});
+towerActionFuseBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  hideTowerActionPopup();
+  openFusionModal();
+});
+towerActionCancelBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  cancelTowerAction();
+});
+towerActionPopup.addEventListener('click', e => {
+  if (e.target === towerActionPopup) cancelTowerAction();
+});
+
+closeDeleteTowerModalBtn.addEventListener('click', closeDeleteTowerModal);
+cancelDeleteTowerBtn.addEventListener('click', closeDeleteTowerModal);
+confirmDeleteTowerBtn.addEventListener('click', confirmDeleteTower);
+deleteTowerModal.addEventListener('click', e => {
+  if (e.target === deleteTowerModal) closeDeleteTowerModal();
+});
+
+closeFusionModalBtn.addEventListener('click', closeFusionModal);
+fusionCancelBtn.addEventListener('click', closeFusionModal);
+fusionModal.addEventListener('click', e => {
+  if (e.target === fusionModal) closeFusionModal();
+});
+fusionOrbList.addEventListener('click', e => {
+  const chip = e.target.closest('.orb-chip');
+  if (!chip) return;
+  applyFusionOrb(chip.dataset.attribute);
+});
+
+blacksmithBtn.addEventListener('click', openBlacksmithModal);
+closeBlacksmithModalBtn.addEventListener('click', closeBlacksmithModal);
+blacksmithModal.addEventListener('click', e => {
+  if (e.target === blacksmithModal) closeBlacksmithModal();
+});
+blacksmithOrbList.addEventListener('click', e => {
+  const chip = e.target.closest('.orb-chip');
+  if (!chip) return;
+  assignForgeOrb(chip.dataset.attribute);
+});
+forgeSlot0Btn.addEventListener('click', () => selectForgeSlot(0));
+forgeSlot1Btn.addEventListener('click', () => selectForgeSlot(1));
+forgeCombineBtn.addEventListener('click', combineForge);
+document.querySelectorAll('.skill-btn').forEach(button => {
+  button.addEventListener('click', () => useSkill(button.dataset.skill));
+});
+setupUpgradeAmountControls(upgradeBtn, 'create');
+setupUpgradeAmountControls(globalSpeedBtn, 'globalSpeed');
+setupUpgradeAmountControls(globalPowerBtn, 'globalPower');
+setupUpgradeAmountControls(globalRangeBtn, 'globalRange');
+setupUpgradeAmountControls(criticalChanceBtn, 'criticalChance');
+setupUpgradeAmountControls(criticalDamageBtn, 'criticalDamage');
+setupUpgradeAmountControls(castleHealthBtn, 'castleHealth');
+setupUpgradeAmountControls(towerLimitBtn, 'towerLimit');
+setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
+setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
+setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
+updateHealthText();
+updateSpeedModeButton();
+priceBar.textContent = `${getTowerCreateCost()} $`;
+refreshUpgradeUi();
+updateInventoryView();
+refreshSkillBar();
+resetGameIntervals();
