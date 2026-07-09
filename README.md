@@ -132,7 +132,7 @@ http://localhost:8000
 
 ## Supabase 랭킹 설정
 
-`supabase-config.js`에 Supabase REST API 정보를 입력하면 랭킹 저장과 조회가 활성화됩니다.
+`js/supabase-config.js`에 Supabase REST API 정보를 입력하면 랭킹 저장과 조회가 활성화됩니다.
 
 ```js
 window.SUPABASE_CONFIG = {
@@ -192,17 +192,32 @@ create table room_players (
 ```text
 mergedefense/
 ├── index.html          # 시작 화면, 랭킹 목록, 팀 플레이 진입
-├── main.html           # 메인 게임 화면
-├── room.html           # 팀 플레이 방 생성/참가/대기실
-├── fail.html           # 게임 오버 화면 (팀 결과 요약 포함)
-├── script.js           # 게임 로직, 전투, 머지, 업그레이드, 랭킹 저장
-├── team.js             # 팀 플레이 실시간 동기화 어댑터 (main.html에서 로드)
-├── room.js             # 방 CRUD·초대코드·대기실 로직 (room.html에서 로드)
-├── style.css           # 메인 게임 스타일
-├── supabase-config.js  # Supabase 연결 설정
-├── defense.png         # 성 이미지
-├── img/                # 포탑 이미지
-└── enemyImg/           # 적 이미지
+├── index.css            # index.html 전용 스타일
+├── main.html            # 메인 게임 화면
+├── style.css             # main.html 전용 스타일
+├── js/                   # JavaScript 파일
+│   ├── index.js          # 로그인, 랭킹 로딩/렌더링
+│   ├── room.js           # 방 CRUD·초대코드·대기실 로직
+│   ├── fail.js           # 팀 결과 요약, 재시작 버튼
+│   ├── team.js           # 팀 플레이 실시간 동기화 어댑터 (main.html에서 로드)
+│   ├── supabase-config.js # Supabase 연결 설정
+│   ├── config.js         # 상수, DOM 참조, 전역 상태
+│   ├── towers.js         # 타워 생성/스탯/생성비용
+│   ├── enemies.js        # 적 생성/이동
+│   ├── equipment.js      # 장비 생성/장착/해제
+│   ├── combat.js         # 공격 루프, 총알, 데미지, 속성 효과
+│   ├── upgrade-modal.js  # 타워 업그레이드 모달, 전역 업그레이드
+│   ├── inventory.js      # 드래그앤드롭, 인벤토리 뷰
+│   ├── attribute-orbs.js # 대기 포탑 삭제/분해/융합 + 대장간
+│   ├── skills.js         # 스킬바
+│   └── game.js           # 게임 루프/인터벌, 랭킹 저장, 이벤트 바인딩
+├── room.html             # 팀 플레이 방 생성/참가/대기실
+├── room.css              # room.html 전용 스타일
+├── fail.html             # 게임 오버 화면 (팀 결과 요약 포함)
+├── fail.css              # fail.html 전용 스타일
+├── defense.png           # 성 이미지
+├── img/                  # 포탑 이미지
+└── enemyImg/             # 적 이미지
 ```
 
 ## 사용 기술

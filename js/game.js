@@ -154,6 +154,8 @@ function upgradeCreate() {
   }
 }
 
+createBtn.addEventListener('click', spawnBtn);
+upgradeBtn.addEventListener('click', upgradeCreate);
 closeUpgradeModalBtn.addEventListener('click', closeUpgradeModal);
 sellTowerBtn.addEventListener('click', sellSelectedTower);
 upgradeModal.addEventListener('click', e => {
@@ -231,6 +233,7 @@ blacksmithOrbList.addEventListener('click', e => {
 });
 forgeSlot0Btn.addEventListener('click', () => selectForgeSlot(0));
 forgeSlot1Btn.addEventListener('click', () => selectForgeSlot(1));
+forgeSlot2Btn.addEventListener('click', () => selectForgeSlot(2));
 forgeCombineBtn.addEventListener('click', combineForge);
 document.querySelectorAll('.skill-btn').forEach(button => {
   button.addEventListener('click', () => useSkill(button.dataset.skill));

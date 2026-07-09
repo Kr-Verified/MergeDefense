@@ -4,64 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Failed</title>
-  <style>
-    body {
-      background: linear-gradient(160deg, #0f172a, #1e293b);
-      display: flex;
-      justify-content: center;
-      flex-direction: column;
-      align-items: center;
-    }
-    p {
-      color: red;
-      font-size: 10vw;
-      font-weight: bolder;
-      text-shadow: 10px 10px 20px blue;
-      transition: 0.5s;
-    }
-    p:hover {
-      transform: scale(1.2);
-    }
-
-    button {
-      transition: 0.5s;
-      border-radius: 20px;
-      width: 30vw;
-      height: 10vh;
-      font-size: 200%;
-      font-weight: bolder;
-      color: white;
-      background: linear-gradient(to right, #06b6d4, #3b82f6);
-    }
-    button:hover {
-      transform: scale(1.5);
-      background-color: aquamarine;
-    }
-
-    #team-summary {
-      color: #94a3b8;
-      font-size: 24px;
-      font-weight: bold;
-      margin: 12px 0 28px;
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="fail.css">
 </head>
 <body>
   <p>Fail</p>
   <p id="team-summary" class="hidden"></p>
-  <button onclick="window.location.href='index.html'">Try Again</button>
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('team') === '1') {
-      const seconds = parseInt(params.get('time') || '0', 10);
-      const el = document.getElementById('team-summary');
-      el.textContent = `팀 생존 시간: ${seconds}초`;
-      el.classList.remove('hidden');
-    }
-  </script>
+  <button id="retry-btn" type="button">Try Again</button>
+  <script src="js/fail.js"></script>
 </body>
 </html>

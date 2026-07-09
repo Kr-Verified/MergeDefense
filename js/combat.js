@@ -86,10 +86,100 @@ function addTowerTime(tower, amount) {
   if (tower === selectedTower) refreshUpgradeModal();
 }
 
-function damageEnemy(enemy, damage, sourceTower = null) {
+function isTowerAttribute(attribute, ...attributes) {
+  return attributes.includes(attribute);
+}
+
+function getEnemyControlDuration(enemy, durationMs, controlType) {
+  const attribute = enemy?.attribute || 'none';
+  let multiplier = 1;
+
+  if (enemy.lv % 5 === 0) multiplier *= 0.5;
+  if (attribute === 'golem' && controlType !== 'fire') multiplier *= 0.55;
+  if (attribute === 'ice' && (controlType === 'slow' || controlType === 'stop' || controlType === 'stun')) multiplier *= 0.4;
+  if (attribute === 'magicResist' && (controlType === 'slow' || controlType === 'stop')) multiplier *= 0.7;
+
+  return durationMs * multiplier;
+}
+
+function getEnemyDamageMultiplier(enemy, sourceTower, damageType) {
+  const enemyAttribute = enemy.attribute || 'none';
+  const towerAttribute = sourceTower?.dataset?.attribute || 'none';
+  let multiplier = 1;
+
+  if (enemyAttribute === 'air') {
+    if (isTowerAttribute(towerAttribute, 'none', 'power')) multiplier *= 0.35;
+    if (isTowerAttribute(towerAttribute, 'ball', 'fire', 'water', 'bomb', 'wall', 'blood')) multiplier *= 1.45;
+  }
+
+  if (enemyAttribute === 'ghost') {
+    if (towerAttribute === 'wall') multiplier *= 1.55;
+    else if (damageType === 'attack' && Math.random() < 0.35) return 0;
+  }
+
+  if (enemyAttribute === 'golem' && isTowerAttribute(towerAttribute, 'power', 'bomb')) multiplier *= 1.5;
+  if (enemyAttribute === 'lightning' && isTowerAttribute(towerAttribute, 'water', 'wall')) multiplier *= 1.5;
+  if (enemyAttribute === 'ice' && towerAttribute === 'fire') multiplier *= 1.6;
+
+  if (enemyAttribute === 'flame') {
+    if (damageType === 'dot') multiplier *= 0.3;
+    if (towerAttribute === 'water') multiplier *= 1.6;
+  }
+
+  if (enemyAttribute === 'regen' && (towerAttribute === 'fire' || towerAttribute === 'bomb' || damageType === 'dot')) multiplier *= 1.45;
+
+  if (enemyAttribute === 'shield') {
+    const enemyRect = enemy.element.getBoundingClientRect();
+    const towerRect = sourceTower?.getBoundingClientRect?.();
+    const isFrontHit = towerRect ? (towerRect.left + towerRect.width / 2) < (enemyRect.left + enemyRect.width / 2) : true;
+    if (damageType !== 'bomb' && isFrontHit) multiplier *= 0.6;
+    if (damageType === 'bomb' || !isFrontHit) multiplier *= 1.35;
+  }
+
+  if (enemyAttribute === 'split' && damageType === 'bomb') multiplier *= 1.45;
+  if (enemyAttribute === 'vampire' && isTowerAttribute(towerAttribute, 'power', 'bomb')) multiplier *= 1.4;
+
+  if (enemyAttribute === 'magicResist') {
+    if (isTowerAttribute(towerAttribute, 'fire', 'water', 'blood')) multiplier *= 0.65;
+    if (isTowerAttribute(towerAttribute, 'power', 'ball')) multiplier *= 1.4;
+  }
+
+  if (enemyAttribute === 'heavyArmor') {
+    if (damageType === 'attack' && !isTowerAttribute(towerAttribute, 'bomb')) multiplier *= 0.65;
+    if (damageType === 'bomb' || damageType === 'dot') multiplier *= 1.4;
+  }
+
+  return multiplier;
+}
+
+function applyEnemyDeathEffects(enemy, sourceTower, damageType) {
+  if (enemy.attribute !== 'split') return;
+  if (damageType === 'bomb') return;
+  if (window.TeamSession && window.TeamSession.isActive() && !window.TeamSession.isHost) return;
+
+  const childLevel = Math.max(1, Math.floor(enemy.lv * 0.6));
+  const enemyRect = enemy.element.getBoundingClientRect();
+  for (let i = 0; i < 2; i += 1) {
+    const child = spawnEnemy(undefined, childLevel, 'none', 1);
+    if (!child || !child.element) continue;
+    child.maxHp = Math.max(1, Math.floor(enemy.maxHp * 0.22));
+    child.hp = child.maxHp;
+    child.castleDamage = Math.max(1, Math.floor(enemy.castleDamage * 0.35));
+    child.element.dataset.maxHp = child.maxHp;
+    child.element.dataset.castleDamage = child.castleDamage;
+    child.element.style.left = `${enemyRect.left + i * 28}px`;
+    child.element.style.top = `${Math.max(0, enemyRect.top + (i === 0 ? -24 : 24))}px`;
+    child.element.innerHTML = getEnemyHtml(child);
+  }
+}
+
+function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
   if (!enemy || !document.body.contains(enemy.element)) return 0;
 
-  const appliedDamage = Math.floor(damage);
+  const damageType = options.type || 'attack';
+  const appliedDamage = Math.max(0, Math.floor(damage * getEnemyDamageMultiplier(enemy, sourceTower, damageType)));
+  if (appliedDamage <= 0) return 0;
+
   enemy.hp -= appliedDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
 
@@ -97,6 +187,7 @@ function damageEnemy(enemy, damage, sourceTower = null) {
   if (isTeamActive) window.TeamSession.reportEnemyHit(enemy.id, appliedDamage);
 
   if (enemy.hp <= 0) {
+    applyEnemyDeathEffects(enemy, sourceTower, damageType);
     if (document.body.contains(enemy.element)) enemy.element.remove();
     addTowerTime(sourceTower, parseInt(enemy.element.dataset.lv || enemy.lv || '0'));
     const rewardMultiplierRoll = Math.random();
@@ -156,11 +247,11 @@ function applyTowerHit(fromTower, targetEnemy) {
   }
 
   if (attribute === 'water' && document.body.contains(targetEnemy.element)) {
-    targetEnemy.element.dataset.slowUntil = `${Date.now() + 3000}`;
+    targetEnemy.element.dataset.slowUntil = `${Date.now() + getEnemyControlDuration(targetEnemy, 3000, 'slow')}`;
   }
 
   if (attribute === 'wall' && document.body.contains(targetEnemy.element)) {
-    targetEnemy.element.dataset.stopUntil = `${Date.now() + 3000}`;
+    targetEnemy.element.dataset.stopUntil = `${Date.now() + getEnemyControlDuration(targetEnemy, 3000, 'stop')}`;
   }
 
   if (attribute === 'fire' && document.body.contains(targetEnemy.element)) {
@@ -176,8 +267,9 @@ function promoteEnemyToThreeStar(enemy) {
   if (enemy.star >= 3 || !document.body.contains(enemy.element)) return;
   if (Math.random() >= 0.1) return;
 
-  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star);
-  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3);
+  const attributeHpMultiplier = getEnemyAttributeMaxHpMultiplier(enemy.attribute);
+  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star) * attributeHpMultiplier;
+  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3) * attributeHpMultiplier;
 
   enemy.star = 3;
   enemy.hp += newMaxHp - oldMaxHp;
@@ -202,7 +294,7 @@ function applyFireDamage(enemy, baseDamage, fromTower) {
     }
 
     ticks += 1;
-    damageEnemy(enemy, baseDamage * 0.25, fromTower);
+    damageEnemy(enemy, baseDamage * 0.25, fromTower, { type: 'dot' });
 
     if (ticks >= 3) clearInterval(fireInterval);
   }, 1000 / gameSpeed);
@@ -224,7 +316,7 @@ function applyBombDamage(targetEnemy, damage, fromTower) {
     const dy = targetY - enemyY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist <= bombRange) damageEnemy(enemy, damage, fromTower);
+    if (dist <= bombRange) damageEnemy(enemy, damage, fromTower, { type: 'bomb' });
   });
 }
 
@@ -310,9 +402,13 @@ function bossRecoverLoop() {
   if (isGamePaused) return;
 
   enemies.forEach(enemy => {
-    if (enemy.lv%5!=0 || !document.body.contains(enemy.element)) return;
+    if (!document.body.contains(enemy.element)) return;
 
-    const healAmount = enemy.maxHp * 0.01;
+    let healAmount = 0;
+    if (enemy.lv%5==0) healAmount += enemy.maxHp * 0.01;
+    if (enemy.attribute === 'regen') healAmount += enemy.maxHp * 0.006;
+    if (healAmount <= 0) return;
+
     enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
     enemy.element.innerHTML = getEnemyHtml(enemy);
     if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportEnemyHit(enemy.id, -healAmount);

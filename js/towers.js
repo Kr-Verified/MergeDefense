@@ -51,7 +51,8 @@ function getAttributeText(attribute) {
 }
 
 function getAttributeClass(attribute) {
-  return attribute && attribute.includes('+') ? 'fused' : attribute;
+  if (!attribute || attribute === 'none') return 'none';
+  return BASE_ATTRIBUTES.includes(attribute) ? attribute : 'fused';
 }
 
 function getTowerUpgradeTotal(tower) {
@@ -86,7 +87,18 @@ function setTowerAttribute(tower, attribute) {
 function getTowerMaxHp(tower) {
   const lv = parseInt(tower.dataset.lv);
   const star = parseInt(tower.dataset.star || '1');
-  return Math.max(1, Math.floor(lv * 50 * getTowerStarDamageMultiplier(star)));
+  const baseMaxHp = lv * 50 * getTowerStarDamageMultiplier(star);
+  return Math.max(1, Math.floor(baseMaxHp * (1 + getEquipmentBonus(tower, 'maxHp'))));
+}
+
+function applyTowerMaxHpDelta(tower, oldMaxHp) {
+  const newMaxHp = getTowerMaxHp(tower);
+  if (newMaxHp === oldMaxHp) return;
+
+  tower.dataset.maxHp = `${newMaxHp}`;
+  const currentHp = parseInt(tower.dataset.hp || `${oldMaxHp}`);
+  tower.dataset.hp = `${Math.max(1, Math.min(newMaxHp, currentHp + (newMaxHp - oldMaxHp)))}`;
+  renderTowerHpBar(tower);
 }
 
 function renderTowerHpBar(tower) {

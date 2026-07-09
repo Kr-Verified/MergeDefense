@@ -1,12 +1,11 @@
 function castBarrage() {
-  [...enemies].forEach(enemy => damageEnemy(enemy, enemy.maxHp * 0.3, null));
+  [...enemies].forEach(enemy => damageEnemy(enemy, enemy.maxHp * 0.3, null, { type: 'skill' }));
 }
 
 function castFrostWave() {
-  const slowUntil = `${Date.now() + 4000}`;
   [...enemies].forEach(enemy => {
     if (!document.body.contains(enemy.element)) return;
-    enemy.element.dataset.slowUntil = slowUntil;
+    enemy.element.dataset.slowUntil = `${Date.now() + getEnemyControlDuration(enemy, 4000, 'slow')}`;
   });
 }
 

@@ -22,16 +22,66 @@ function getEnemyCastleDamage(lv, star) {
   return lv * getEnemyStarDamageMultiplier(star) * bossMultiplier;
 }
 
-function createEnemy(lv, star = getRandomEnemyStar()) {
+function getEnemyAttributeText(attribute) {
+  const names = {
+    air: '공중',
+    ghost: '고스트',
+    golem: '골렘',
+    lightning: '번개',
+    ice: '얼음',
+    flame: '화염',
+    regen: '재생',
+    shield: '방패',
+    split: '분열',
+    berserk: '광폭',
+    vampire: '흡혈',
+    magicResist: '마법저항',
+    heavyArmor: '중갑',
+    assassin: '암살자',
+    boss: '보스',
+    none: ''
+  };
+  return names[attribute] || '';
+}
+
+function getRandomFromList(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getRandomEnemyAttribute() {
+  const roll = Math.random();
+
+  if (survivedSeconds < 30) return 'none';
+  if (survivedSeconds < 100) return roll < 0.8 ? 'none' : getRandomFromList(EARLY_ENEMY_ATTRIBUTES);
+  if (survivedSeconds < 600) return roll < 0.6 ? 'none' : getRandomFromList(MID_ENEMY_ATTRIBUTES);
+  return roll < 0.05 ? 'none' : getRandomFromList(ALL_ENEMY_ATTRIBUTES);
+}
+
+function getEnemyAttributeMaxHpMultiplier(attribute) {
+  if (attribute === 'golem') return 1.8;
+  if (attribute === 'assassin') return 0.55;
+  if (attribute === 'heavyArmor') return 1.25;
+  return 1;
+}
+
+function getEnemyAttributeCastleDamageMultiplier(attribute) {
+  if (attribute === 'vampire') return 1.5;
+  if (attribute === 'assassin') return 1.2;
+  return 1;
+}
+
+function createEnemy(lv, star = getRandomEnemyStar(), attribute = getRandomEnemyAttribute()) {
   let hp = getBaseEnemyHp(lv);
   hp *= getEnemyStarHealthMultiplier(star);
+  hp *= getEnemyAttributeMaxHpMultiplier(attribute);
   return {
     id: enemyId++,
     lv: lv,
     star: star,
+    attribute: attribute,
     hp: hp,
     maxHp: hp,
-    castleDamage: getEnemyCastleDamage(lv, star),
+    castleDamage: Math.ceil(getEnemyCastleDamage(lv, star) * getEnemyAttributeCastleDamageMultiplier(attribute)),
     element: null
   }
 }
@@ -45,18 +95,22 @@ function getBaseEnemyHp(lv) {
 function getEnemyHtml(enemy) {
   const size = parseInt(enemy.lv)%5==0 ? 150 : 100;
   const stars = '★'.repeat(enemy.star);
+  const attributeText = getEnemyAttributeText(enemy.attribute);
+  const bossText = parseInt(enemy.lv)%5==0 ? getEnemyAttributeText('boss') : '';
   return `
     <p class="enemy-level">${enemy.lv} Lv</p>
     <div class="enemy-image-wrap">
       <img src="./enemyImg/${enemy.lv}.png" width="${size}px" alt="${enemy.lv} Lv enemy">
       <span class="enemy-star-badge">${stars}</span>
+      ${attributeText ? `<span class="enemy-attribute-badge enemy-attribute-${enemy.attribute}">${attributeText}</span>` : ''}
+      ${bossText ? `<span class="enemy-boss-badge">${bossText}</span>` : ''}
     </div>
     <p class="enemy-hp">${Math.ceil(enemy.hp)} Hp</p>
     <p class="enemy-damage">성 공격 ${enemy.castleDamage}</p>
   `;
 }
 
-function spawnEnemy(forcedId, forcedLv) {
+function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar) {
   if (isGamePaused) return null;
 
   let lv = forcedLv;
@@ -70,10 +124,10 @@ function spawnEnemy(forcedId, forcedLv) {
   }
 
   if (lv % 5 === 0) spawnedLimitedEnemyLevels.add(lv);
-  const enemy = createEnemy(lv);
+  const enemy = createEnemy(lv, forcedStar || getRandomEnemyStar(), forcedAttribute || getRandomEnemyAttribute());
   if (forcedId !== undefined) enemy.id = forcedId;
   const div = document.createElement('div');
-  div.className = `enemy star-${enemy.star}`;
+  div.className = `enemy star-${enemy.star} enemy-attr-${enemy.attribute}`;
   div.style.display = 'flex';
   div.style.flexDirection = 'column';
   div.innerHTML = getEnemyHtml(enemy);
@@ -86,9 +140,11 @@ function spawnEnemy(forcedId, forcedLv) {
   div.dataset.id = enemy.id;
   div.dataset.lv = enemy.lv;
   div.dataset.star = enemy.star;
+  div.dataset.attribute = enemy.attribute;
   div.dataset.maxHp = enemy.maxHp;
   div.dataset.castleDamage = enemy.castleDamage;
   div.dataset.lastCastleAttack = '0';
+  div.dataset.lastTeleport = '0';
 
   board.appendChild(div);
   makeDraggable(div);
@@ -106,6 +162,50 @@ function spawnEnemy(forcedId, forcedLv) {
   }
 
   return enemy;
+}
+
+function getEnemyByElement(enemyDiv) {
+  return enemies.find(enemy => enemy.element === enemyDiv) || null;
+}
+
+function getEnemyMoveSpeedMultiplier(enemy) {
+  const attribute = enemy?.attribute || enemy?.element?.dataset.attribute || 'none';
+  let multiplier = 1;
+
+  if (attribute === 'golem') multiplier *= 0.8;
+  if (attribute === 'lightning') multiplier *= 1.45;
+  if (attribute === 'assassin') multiplier *= 1.8;
+  if (attribute === 'berserk' && enemy.maxHp > 0 && enemy.hp / enemy.maxHp <= 0.4) multiplier *= 1.6;
+
+  return multiplier;
+}
+
+function getEnemySlowMultiplier(enemyDiv) {
+  const enemy = getEnemyByElement(enemyDiv);
+  const attribute = enemy?.attribute || enemyDiv.dataset.attribute || 'none';
+  const isSlowed = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0');
+  if (!isSlowed) return 1;
+
+  if (attribute === 'golem') return 0.75;
+  if (attribute === 'ice') return 0.8;
+  return 0.5;
+}
+
+function maybeTeleportEnemy(enemyDiv, dx, dy, dist) {
+  const enemy = getEnemyByElement(enemyDiv);
+  if ((enemy?.attribute || enemyDiv.dataset.attribute) !== 'lightning') return;
+  if (dist <= 120) return;
+
+  const now = Date.now();
+  const interval = 2800 / Math.max(1, gameSpeed);
+  const lastTeleport = parseInt(enemyDiv.dataset.lastTeleport || '0');
+  if (now - lastTeleport < interval) return;
+
+  enemyDiv.dataset.lastTeleport = `${now}`;
+  const stepX = (dx / dist) * 90;
+  const stepY = (dy / dist) * 90;
+  enemyDiv.style.left = `${enemyDiv.offsetLeft + stepX}px`;
+  enemyDiv.style.top = `${Math.max(0, enemyDiv.offsetTop + stepY + (Math.random() * 60 - 30))}px`;
 }
 
 function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
@@ -126,8 +226,13 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       if (now - lastCastleAttack < 1000 / gameSpeed) return;
 
       enemyDiv.dataset.lastCastleAttack = `${now}`;
+      const enemy = getEnemyByElement(enemyDiv);
       const castleDamage = parseInt(enemyDiv.dataset.castleDamage || '1');
       health -= castleDamage;
+      if (enemy?.attribute === 'vampire') {
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.floor(enemy.maxHp * 0.12));
+        enemy.element.innerHTML = getEnemyHtml(enemy);
+      }
       if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(castleDamage);
       if (health<=0) {
         endGame();
@@ -141,9 +246,12 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     if (enemyLv%4==0 && enemyLv%5!=0) speed = 2.3;
     if (Date.now() < parseInt(enemyDiv.dataset.stopUntil || '0')) return;
     if (enemyDiv.dataset.engaged === '1') return;
-    const slowMultiplier = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0') ? 0.5 : 1;
-    const vx = (dx / dist) * speed * gameSpeed * slowMultiplier;
-    const vy = (dy / dist) * speed * gameSpeed * slowMultiplier;
+    maybeTeleportEnemy(enemyDiv, dx, dy, dist);
+    const enemy = getEnemyByElement(enemyDiv);
+    const slowMultiplier = getEnemySlowMultiplier(enemyDiv);
+    const attributeSpeedMultiplier = getEnemyMoveSpeedMultiplier(enemy);
+    const vx = (dx / dist) * speed * gameSpeed * slowMultiplier * attributeSpeedMultiplier;
+    const vy = (dy / dist) * speed * gameSpeed * slowMultiplier * attributeSpeedMultiplier;
 
     enemyDiv.style.left = `${enemyDiv.offsetLeft + vx}px`;
     enemyDiv.style.top = `${enemyDiv.offsetTop + vy}px`;

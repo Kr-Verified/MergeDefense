@@ -346,7 +346,7 @@ ensurePlayerName();
 ensureClientId();
 
 if (!supabaseClient) {
-  showStatus('Supabase 설정이 필요합니다. supabase-config.js를 확인해주세요.');
+  showStatus('Supabase 설정이 필요합니다. js/supabase-config.js를 확인해주세요.');
   roomListEl.innerHTML = '<p class="room-meta">Supabase 설정이 필요합니다.</p>';
 } else {
   startRoomListPolling();

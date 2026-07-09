@@ -42,7 +42,8 @@ body {
   padding: 5px 8px;
   border: 1px solid rgba(255, 100, 100, 0.35);
   border-radius: 8px;
-  color: #ff7373;
+  color: red;
+  margin-bottom: 10px;
   background-color: rgba(16, 20, 38, 0.72);
   text-align: center;
   font-weight: 800;
@@ -452,7 +453,6 @@ body {
 
 .enemy {
   align-items: center;
-  z-index: 2;
 }
 
 .enemy p {
@@ -489,6 +489,49 @@ body {
   text-align: center;
   white-space: nowrap;
 }
+
+.enemy-attribute-badge,
+.enemy-boss-badge {
+  position: absolute;
+  left: 50%;
+  min-width: 42px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+.enemy-attribute-badge {
+  top: 4px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #495057, #212529);
+}
+
+.enemy-boss-badge {
+  top: 24px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #ffd43b, #e03131);
+}
+
+.enemy-attribute-badge.enemy-attribute-air { background: linear-gradient(180deg, #74c0fc, #5c7cfa); }
+.enemy-attribute-badge.enemy-attribute-ghost { background: linear-gradient(180deg, #d0bfff, #7048e8); }
+.enemy-attribute-badge.enemy-attribute-golem { background: linear-gradient(180deg, #adb5bd, #495057); }
+.enemy-attribute-badge.enemy-attribute-lightning { background: linear-gradient(180deg, #fff3bf, #f08c00); color: #2c2100; }
+.enemy-attribute-badge.enemy-attribute-ice { background: linear-gradient(180deg, #99e9f2, #228be6); }
+.enemy-attribute-badge.enemy-attribute-flame { background: linear-gradient(180deg, #ff8787, #c92a2a); }
+.enemy-attribute-badge.enemy-attribute-regen { background: linear-gradient(180deg, #8ce99a, #2b8a3e); }
+.enemy-attribute-badge.enemy-attribute-shield { background: linear-gradient(180deg, #91a7ff, #364fc7); }
+.enemy-attribute-badge.enemy-attribute-split { background: linear-gradient(180deg, #ffc078, #e8590c); }
+.enemy-attribute-badge.enemy-attribute-berserk { background: linear-gradient(180deg, #ff6b6b, #862e9c); }
+.enemy-attribute-badge.enemy-attribute-vampire { background: linear-gradient(180deg, #f06595, #5f3dc4); }
+.enemy-attribute-badge.enemy-attribute-magicResist { background: linear-gradient(180deg, #b197fc, #1864ab); }
+.enemy-attribute-badge.enemy-attribute-heavyArmor { background: linear-gradient(180deg, #ced4da, #343a40); }
+.enemy-attribute-badge.enemy-attribute-assassin { background: linear-gradient(180deg, #868e96, #000000); }
 
 .enemy.star-2 .enemy-star-badge {
   color: #06251e;

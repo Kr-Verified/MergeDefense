@@ -1,0 +1,171 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Orbitron', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #0f172a, #1e293b);
+  color: #f8fafc;
+  padding: 32px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+main {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+h1 {
+  font-size: 32px;
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+a.back-link {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.card {
+  padding: 22px;
+  border: 2px solid rgba(56, 189, 248, 0.3);
+  border-radius: 18px;
+  background: rgba(30, 41, 59, 0.72);
+}
+
+.card h2 {
+  margin-bottom: 14px;
+  font-size: 18px;
+  color: #facc15;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+input, select {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: #334155;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+
+input:focus, select:focus {
+  outline: 2px solid #38bdf8;
+}
+
+#join-room-code {
+  text-transform: uppercase;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  background: linear-gradient(to right, #06b6d4, #3b82f6);
+  transition: transform 0.15s ease;
+}
+
+button:hover {
+  transform: scale(1.03);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+button.danger {
+  background: linear-gradient(to right, #dc2626, #f97316);
+}
+
+button.ghost {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#room-list {
+  display: grid;
+  gap: 10px;
+}
+
+.room-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background-color: rgba(51, 65, 85, 0.5);
+  font-size: 13px;
+}
+
+.room-row .room-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-meta {
+  color: #94a3b8;
+  font-size: 15px;
+}
+
+#status-message {
+  min-height: 18px;
+  color: #f87171;
+  font-size: 13px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#lobby-code {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: #facc15;
+}
+
+#lobby-players {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.lobby-player {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background-color: rgba(51, 65, 85, 0.6);
+  font-size: 14px;
+}
+
+.lobby-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

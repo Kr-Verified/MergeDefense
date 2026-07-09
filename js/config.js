@@ -5,6 +5,7 @@ let coins = 3;
 let spawnLv = 1;
 const board = document.getElementById('game-board');
 const createBar = document.getElementById('create-bar');
+const createBtn = document.getElementById('create-btn');
 const coinBar = document.getElementById('coin-bar');
 const survivalTimeBar = document.getElementById('survival-time');
 const upgradeBtn = document.getElementById('upgrade-create-btn');
@@ -65,14 +66,16 @@ const closeBlacksmithModalBtn = document.getElementById('close-blacksmith-modal'
 const blacksmithOrbList = document.getElementById('blacksmith-orb-list');
 const forgeSlot0Btn = document.getElementById('forge-slot-0');
 const forgeSlot1Btn = document.getElementById('forge-slot-1');
+const forgeSlot2Btn = document.getElementById('forge-slot-2');
 const forgeResultEl = document.getElementById('forge-result');
+const forgeEffectText = document.getElementById('forge-effect-text');
 const forgeCombineBtn = document.getElementById('forge-combine-btn');
 let draggedTower = null;
 let draggedEquipment = null;
 let selectedTower = null;
 let waitingTowerActionTarget = null;
 let attributeOrbs = {};
-let forgeSlots = [null, null];
+let forgeSlots = [null, null, null];
 let forgeActiveSlot = null;
 let inventoryView = 'tower';
 let isGamePaused = false;
@@ -166,7 +169,41 @@ const EQUIPMENT_TYPES = {
     name: '망치',
     stat: 'critDamage',
     description: '치명피해'
+  },
+  shield: {
+    name: '방패',
+    stat: 'maxHp',
+    description: '최대 체력'
   }
 };
 
 const BASE_ATTRIBUTES = ['water', 'fire', 'bomb', 'ball', 'power', 'wall', 'blood'];
+const EARLY_ENEMY_ATTRIBUTES = ['air', 'ghost', 'golem', 'lightning'];
+const MID_ENEMY_ATTRIBUTES = [
+  'air',
+  'ghost',
+  'golem',
+  'lightning',
+  'regen',
+  'shield',
+  'split',
+  'assassin',
+  'heavyArmor',
+  'magicResist'
+];
+const ALL_ENEMY_ATTRIBUTES = [
+  'air',
+  'ghost',
+  'golem',
+  'lightning',
+  'ice',
+  'flame',
+  'regen',
+  'shield',
+  'split',
+  'berserk',
+  'vampire',
+  'magicResist',
+  'heavyArmor',
+  'assassin'
+];

@@ -1,8 +1,8 @@
 function createEquipment() {
   const types = Object.keys(EQUIPMENT_TYPES);
   const type = types[Math.floor(Math.random() * types.length)];
-  const minValue = type === 'needle' ? 3 : 3;
-  const maxValue = type === 'needle' ? 10 : 45;
+  const minValue = type === 'needle' ? 3 : type === 'shield' ? 5 : 3;
+  const maxValue = type === 'needle' ? 10 : type === 'shield' ? 50 : 45;
   return {
     id: equipmentId++,
     type: type,
@@ -104,6 +104,7 @@ function equipDraggedEquipment(slotIndex) {
   const equipment = getTowerEquipment(selectedTower);
   if (equipment[slotIndex]) return;
 
+  const oldMaxHp = getTowerMaxHp(selectedTower);
   equipment[slotIndex] = {
     id: parseInt(draggedEquipment.dataset.id),
     type: draggedEquipment.dataset.type,
@@ -111,6 +112,7 @@ function equipDraggedEquipment(slotIndex) {
   };
 
   setTowerEquipment(selectedTower, equipment);
+  applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   draggedEquipment.remove();
   draggedEquipment = null;
   refreshUpgradeUi();
@@ -123,8 +125,10 @@ function unequipEquipment(slotIndex) {
   const equipped = equipment[slotIndex];
   if (!equipped) return;
 
+  const oldMaxHp = getTowerMaxHp(selectedTower);
   equipment[slotIndex] = null;
   setTowerEquipment(selectedTower, equipment);
+  applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   addEquipmentToInventory(equipped);
   refreshUpgradeUi();
 }

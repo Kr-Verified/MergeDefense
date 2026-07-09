@@ -15,7 +15,7 @@
       <span id="tower-count">0 / 10 포탑</span>
     </div>
     <div id="defense">
-      <p id="health" style="color:red; margin-bottom: 10px;">1000 Hp</p>
+      <p id="health">1000 Hp</p>
     </div>
     <div id="skill-bar">
       <button id="skill-barrage" class="skill-btn" data-skill="barrage" type="button">
@@ -47,8 +47,8 @@
       <button id="blacksmith-btn" type="button" class="inventory-tab">대장장</button>
     </div>
     <div id="btn-bar">
-      <button id="create-btn" onclick="spawnBtn()" class="btn"><p id="spawnLv">1 생성</p><span id="price">1 $</span></button>
-      <button id="upgrade-create-btn" onclick="upgradeCreate()" class="btn">생성 단계 향상 5 $</button>
+      <button id="create-btn" class="btn"><p id="spawnLv">1 생성</p><span id="price">1 $</span></button>
+      <button id="upgrade-create-btn" class="btn">생성 단계 향상 5 $</button>
       <button id="global-speed-btn" type="button" class="btn global-upgrade-btn">전체 속도 향상</button>
       <button id="global-power-btn" type="button" class="btn global-upgrade-btn">전체 힘 향상</button>
       <button id="global-range-btn" type="button" class="btn global-upgrade-btn">전체 범위 향상</button>
@@ -153,21 +153,24 @@
       <h2>대장간</h2>
       <p class="orb-hint">보유 중인 속성 구슬</p>
       <div id="blacksmith-orb-list" class="orb-grid"></div>
-      <p class="orb-hint">구슬 두 개를 골라 새로운 속성 구슬을 만드세요.</p>
+      <p class="orb-hint">구슬 세 개를 골라 새로운 속성 구슬을 만드세요.</p>
       <div class="forge-row">
         <button id="forge-slot-0" type="button" class="forge-slot">+</button>
         <span class="forge-sign">+</span>
         <button id="forge-slot-1" type="button" class="forge-slot">+</button>
+        <span class="forge-sign">+</span>
+        <button id="forge-slot-2" type="button" class="forge-slot">+</button>
         <span class="forge-sign">→</span>
         <div id="forge-result" class="forge-slot forge-result">?</div>
       </div>
+      <p id="forge-effect-text" class="orb-hint"></p>
       <button id="forge-combine-btn" type="button" class="sell-btn" disabled>합성하기</button>
     </div>
   </div>
 
-  <script src="supabase-config.js"></script>
+  <script src="js/supabase-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="team.js"></script>
+  <script src="js/team.js"></script>
   <script src="js/config.js"></script>
   <script src="js/towers.js"></script>
   <script src="js/enemies.js"></script>
