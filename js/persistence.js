@@ -224,7 +224,7 @@ function applyGameState(state) {
   (globals.spawnedLimitedEnemyLevels || []).forEach(level => spawnedLimitedEnemyLevels.add(level));
   if (typeof skillLastUsed === 'object') {
     Object.keys(skillLastUsed).forEach(key => {
-      skillLastUsed[key] = globals.skillLastUsed?.[key] || 0;
+      skillLastUsed[key] = globals.skillLastUsed?.[key] || Date.now();
     });
   }
 

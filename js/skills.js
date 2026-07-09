@@ -32,7 +32,7 @@ const SKILLS = {
   goldRush: { name: '골드러시', cooldown: 25000, cast: castGoldRush },
   repair: { name: '응급 수리', cooldown: 30000, cast: castFieldRepair }
 };
-const skillLastUsed = { barrage: 0, frost: 0, goldRush: 0, repair: 0 };
+const skillLastUsed = { barrage: Date.now(), frost: Date.now(), goldRush: Date.now(), repair: Date.now() };
 
 function useSkill(key) {
   if (isSpectatorMode()) return;

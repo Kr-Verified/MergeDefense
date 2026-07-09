@@ -451,7 +451,8 @@
           .from('rooms')
           .update({
             castle_hp: Math.max(0, Math.floor(health)),
-            castle_max_hp: Math.max(1, Math.floor(maxHealth))
+            castle_max_hp: Math.max(1, Math.floor(maxHealth)),
+            updated_at: new Date().toISOString()
           })
           .eq('id', session.roomId)
           .then(() => {});

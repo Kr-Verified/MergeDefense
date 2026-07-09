@@ -681,7 +681,7 @@ body {
   right: 0;
   bottom: 0;
   height: 0%;
-  background-color: rgba(0, 0, 0, 0.62);
+  background-color: rgba(0, 0, 0, 0.78);
   transition: height 0.2s linear;
   pointer-events: none;
 }

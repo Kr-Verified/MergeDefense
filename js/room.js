@@ -75,12 +75,23 @@ function generateRoomCode() {
   return code;
 }
 
+const ROOM_HEARTBEAT_STALE_MS = 20000;
+
+function markRoomEnded(roomId) {
+  supabaseClient
+    .from('rooms')
+    .update({ status: 'ended' })
+    .eq('id', roomId)
+    .eq('status', 'playing')
+    .then(() => {});
+}
+
 async function fetchRoomList() {
   if (!supabaseClient) return;
 
   const { data, error } = await supabaseClient
     .from('rooms')
-    .select('id,code,name,max_players,password_hash,status,allow_spectators,room_players(count)')
+    .select('id,code,name,max_players,password_hash,status,allow_spectators,updated_at,room_players(count)')
     .in('status', ['waiting', 'playing'])
     .order('created_at', { ascending: false })
     .limit(20);
@@ -90,12 +101,19 @@ async function fetchRoomList() {
     return;
   }
 
-  if (!data || !data.length) {
+  const liveRooms = (data || []).filter(room => {
+    if (room.status !== 'playing') return true;
+    const isStale = Date.now() - new Date(room.updated_at).getTime() > ROOM_HEARTBEAT_STALE_MS;
+    if (isStale) markRoomEnded(room.id);
+    return !isStale;
+  });
+
+  if (!liveRooms.length) {
     roomListEl.innerHTML = '<p class="room-meta">열린 방이 없습니다. 새로 만들어보세요!</p>';
     return;
   }
 
-  roomListEl.innerHTML = data.map(room => {
+  roomListEl.innerHTML = liveRooms.map(room => {
     const playerCount = room.room_players?.[0]?.count ?? 0;
     const locked = room.password_hash ? '🔒 ' : '';
     const isWaiting = room.status === 'waiting';
