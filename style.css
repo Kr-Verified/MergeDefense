@@ -764,6 +764,32 @@ body {
   white-space: nowrap;
 }
 
+#team-coin-list {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 14px;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 999px;
+  background-color: rgba(12, 16, 31, 0.55);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.team-coin-entry {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.team-coin-entry.self {
+  color: gold;
+}
+
 #team-player-list {
   position: absolute;
   top: 100px;

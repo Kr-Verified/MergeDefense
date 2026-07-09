@@ -136,6 +136,61 @@
 
   let cursorLayer = null;
   const remoteCursors = {};
+  const teamCoinInfo = {};
+
+  function getPresenceName(clientId) {
+    if (!session.channel) return null;
+    const entries = session.channel.presenceState()[clientId];
+    return entries && entries.length ? (entries[0].name || null) : null;
+  }
+
+  function renderTeamCoinList() {
+    let list = document.getElementById('team-coin-list');
+    if (!list) {
+      list = document.createElement('div');
+      list.id = 'team-coin-list';
+      document.getElementById('game-board').appendChild(list);
+    }
+
+    list.innerHTML = '';
+
+    Object.keys(teamCoinInfo)
+      .map(clientId => ({ clientId, ...teamCoinInfo[clientId] }))
+      .filter(entry => typeof entry.coins === 'number')
+      .sort((a, b) => (a.clientId === session.clientId ? -1 : b.clientId === session.clientId ? 1 : 0))
+      .forEach(entry => {
+        const isSelf = entry.clientId === session.clientId;
+        const span = document.createElement('span');
+        span.className = isSelf ? 'team-coin-entry self' : 'team-coin-entry';
+        span.textContent = `${entry.name || 'Guest'}${isSelf ? ' (나)' : ''} ${Math.floor(entry.coins)} $`;
+        list.appendChild(span);
+      });
+  }
+
+  function updateSelfCoinInfo() {
+    teamCoinInfo[session.clientId] = {
+      name: session.playerName,
+      coins: typeof coins === 'number' ? coins : 0
+    };
+    renderTeamCoinList();
+  }
+
+  function pruneTeamCoinInfo(presenceState) {
+    const activeIds = new Set(Object.keys(presenceState || {}));
+    Object.keys(teamCoinInfo).forEach(clientId => {
+      if (!activeIds.has(clientId)) delete teamCoinInfo[clientId];
+    });
+    Object.entries(presenceState || {}).forEach(([clientId, entries]) => {
+      if (teamCoinInfo[clientId] && entries && entries.length) {
+        teamCoinInfo[clientId].name = entries[0].name || teamCoinInfo[clientId].name;
+      }
+    });
+    renderTeamCoinList();
+  }
+
+  function removeTeamCoinList() {
+    document.getElementById('team-coin-list')?.remove();
+  }
 
   function hashStringToHue(str) {
     let hash = 0;
@@ -193,6 +248,7 @@
   function finishTeamGame(seconds) {
     if (typeof clearSavedGameState === 'function') clearSavedGameState();
     removeAllRemoteCursors();
+    removeTeamCoinList();
     if (session.channel) {
       supabaseClient.removeChannel(session.channel);
       session.channel = null;
@@ -286,6 +342,7 @@
       coins += Math.max(0, parseInt(payload.reward || '0', 10));
       refreshUpgradeUi();
       removeRemoteEnemy(payload.id);
+      updateSelfCoinInfo();
     });
 
     channel.on('broadcast', { event: 'castle-hit' }, ({ payload }) => {
@@ -296,6 +353,14 @@
     channel.on('broadcast', { event: 'shared-state' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
       applySharedState(payload.state, payload.from);
+      const peerCoins = payload.state?.globals?.coins;
+      if (typeof peerCoins === 'number') {
+        teamCoinInfo[payload.from] = {
+          name: getPresenceName(payload.from) || teamCoinInfo[payload.from]?.name || 'Guest',
+          coins: peerCoins
+        };
+      }
+      updateSelfCoinInfo();
     });
 
     channel.on('broadcast', { event: 'state-request' }, ({ payload }) => {
@@ -319,11 +384,13 @@
       const presenceState = channel.presenceState();
       renderTeamPlayerList(presenceState);
       pruneRemoteCursors(presenceState);
+      pruneTeamCoinInfo(presenceState);
     });
 
     channel.subscribe(async status => {
       if (status === 'SUBSCRIBED') {
         await channel.track({ name: session.playerName, clientId: session.clientId });
+        updateSelfCoinInfo();
         if (!session.isHost) {
           channel.send({
             type: 'broadcast',
@@ -337,6 +404,11 @@
     });
 
     session.channel = channel;
+
+    setInterval(() => {
+      if (session.ended) return;
+      updateSelfCoinInfo();
+    }, 1000);
 
     let lastCursorSentAt = 0;
     document.addEventListener('mousemove', e => {
