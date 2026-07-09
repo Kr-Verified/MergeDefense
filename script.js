@@ -41,12 +41,43 @@ const equipmentSlots = document.getElementById('equipment-slots');
 const sellTowerBtn = document.getElementById('sell-tower-btn');
 const targetingOptions = document.getElementById('targeting-options');
 const inventoryEmpty = document.getElementById('inventory-empty');
+const blacksmithBtn = document.getElementById('blacksmith-btn');
+const towerActionPopup = document.getElementById('tower-action-popup');
+const towerActionPanel = document.getElementById('tower-action-panel');
+const towerActionTitle = document.getElementById('tower-action-title');
+const towerActionSubtitle = document.getElementById('tower-action-subtitle');
+const towerActionDeleteBtn = document.getElementById('tower-action-delete');
+const towerActionDisassembleBtn = document.getElementById('tower-action-disassemble');
+const towerActionFuseBtn = document.getElementById('tower-action-fuse');
+const towerActionCancelBtn = document.getElementById('tower-action-cancel');
+const deleteTowerModal = document.getElementById('delete-tower-modal');
+const closeDeleteTowerModalBtn = document.getElementById('close-delete-tower-modal');
+const deleteTowerCostText = document.getElementById('delete-tower-cost');
+const confirmDeleteTowerBtn = document.getElementById('confirm-delete-tower-btn');
+const cancelDeleteTowerBtn = document.getElementById('cancel-delete-tower-btn');
+const fusionModal = document.getElementById('fusion-modal');
+const closeFusionModalBtn = document.getElementById('close-fusion-modal');
+const fusionCurrentAttributeText = document.getElementById('fusion-current-attribute');
+const fusionOrbList = document.getElementById('fusion-orb-list');
+const fusionCancelBtn = document.getElementById('fusion-cancel-btn');
+const blacksmithModal = document.getElementById('blacksmith-modal');
+const closeBlacksmithModalBtn = document.getElementById('close-blacksmith-modal');
+const blacksmithOrbList = document.getElementById('blacksmith-orb-list');
+const forgeSlot0Btn = document.getElementById('forge-slot-0');
+const forgeSlot1Btn = document.getElementById('forge-slot-1');
+const forgeResultEl = document.getElementById('forge-result');
+const forgeCombineBtn = document.getElementById('forge-combine-btn');
 let draggedTower = null;
 let draggedEquipment = null;
 let selectedTower = null;
+let waitingTowerActionTarget = null;
+let attributeOrbs = {};
+let forgeSlots = [null, null];
+let forgeActiveSlot = null;
 let inventoryView = 'tower';
 let isGamePaused = false;
 let isGameOver = false;
+let isUpgradeModalOpen = false;
 const selectedUpgradeAmounts = {
   create: '1',
   globalSpeed: '1',
@@ -71,6 +102,7 @@ let castleHealthUpgrade = 0;
 let towerLimitUpgrade = 0;
 let towerLimit = 10;
 let gameSpeed = 1;
+const GAME_SPEED_OPTIONS = [1, 2, 5, 0];
 let enemySpawnInterval = null;
 let towerAttackInterval = null;
 let castleRecoverInterval = null;
@@ -195,6 +227,8 @@ function getTowerStarDamageMultiplier(star) {
   return star;
 }
 
+const BASE_ATTRIBUTES = ['water', 'fire', 'bomb', 'ball', 'power', 'wall', 'blood'];
+
 function getAttributeText(attribute) {
   const names = {
     water: '물',
@@ -206,7 +240,55 @@ function getAttributeText(attribute) {
     blood: '피',
     none: ''
   };
-  return names[attribute] || '';
+  if (names[attribute] !== undefined) return names[attribute];
+  if (attribute && attribute.includes('+')) {
+    return attribute.split('+').map(part => names[part] || part).join('');
+  }
+  return attribute || '';
+}
+
+function getAttributeClass(attribute) {
+  return attribute && attribute.includes('+') ? 'fused' : attribute;
+}
+
+function getFusedAttributeKey(firstAttribute, secondAttribute) {
+  return [firstAttribute, secondAttribute].sort().join('+');
+}
+
+function addAttributeOrb(attribute, count = 1) {
+  if (!attribute || attribute === 'none') return;
+  attributeOrbs[attribute] = (attributeOrbs[attribute] || 0) + count;
+}
+
+function getOwnedAttributeOrbEntries() {
+  return Object.keys(attributeOrbs)
+    .filter(key => attributeOrbs[key] > 0)
+    .sort((a, b) => {
+      const aIndex = BASE_ATTRIBUTES.indexOf(a);
+      const bIndex = BASE_ATTRIBUTES.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    })
+    .map(key => ({ key, count: attributeOrbs[key] }));
+}
+
+function getBlacksmithDisplayEntries() {
+  const entries = BASE_ATTRIBUTES.map(key => ({ key, count: attributeOrbs[key] || 0 }));
+  getOwnedAttributeOrbEntries().forEach(entry => {
+    if (!BASE_ATTRIBUTES.includes(entry.key)) entries.push(entry);
+  });
+  return entries;
+}
+
+function getOrbChipHtml(entry) {
+  return `
+    <div class="orb-chip attribute-${getAttributeClass(entry.key)}" data-attribute="${entry.key}">
+      <span class="orb-name">${getAttributeText(entry.key)}</span>
+      <span class="orb-count">x${entry.count}</span>
+    </div>
+  `;
 }
 
 function createEquipment() {
@@ -274,9 +356,18 @@ function getTowerHtml(lv, star, attribute = 'none') {
     <div class="tower-image-wrap">
       <img src="./img/${lv}.png" alt="${lv} Lv tower">
       <span class="tower-star-badge">${stars}</span>
-      ${attributeText ? `<span class="tower-attribute-badge attribute-${attribute}">${attributeText}</span>` : ''}
+      ${attributeText ? `<span class="tower-attribute-badge attribute-${getAttributeClass(attribute)}">${attributeText}</span>` : ''}
     </div>
   `;
+}
+
+function setTowerAttribute(tower, attribute) {
+  tower.dataset.attribute = attribute;
+  tower.className = tower.className.replace(/attribute-\S+/, `attribute-${getAttributeClass(attribute)}`);
+  const lv = parseInt(tower.dataset.lv);
+  const star = parseInt(tower.dataset.star || '1');
+  tower.innerHTML = getTowerHtml(lv, star, attribute);
+  renderTowerHpBar(tower);
 }
 
 function getTowerMaxHp(tower) {
@@ -375,6 +466,7 @@ async function endGame() {
   if (isGameOver) return;
 
   isGameOver = true;
+  updateGamePausedState();
 
   if (window.TeamSession && window.TeamSession.isActive()) {
     await window.TeamSession.endGame(survivedSeconds);
@@ -388,6 +480,10 @@ async function endGame() {
   } finally {
     window.location.href = 'fail.html';
   }
+}
+
+function updateGamePausedState() {
+  isGamePaused = isGameOver || isUpgradeModalOpen || gameSpeed === 0;
 }
 
 function createEnemy(lv, star = getRandomEnemyStar()) {
@@ -522,7 +618,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
 function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
   const tower = createTower(lv, star, attribute);
   const div = document.createElement('div');
-  div.className = `tower star-${tower.star} attribute-${tower.attribute}`;
+  div.className = `tower star-${tower.star} attribute-${getAttributeClass(tower.attribute)}`;
   div.innerHTML = getTowerHtml(tower.lv, tower.star, tower.attribute);
   div.draggable = true;
   tower.element = div;
@@ -612,6 +708,7 @@ function getTowerAttackInterval(tower) {
   if (tower.dataset.attribute === 'wall') attributeMultiplier *= 2;
   const starMultiplier = parseInt(tower.dataset.star || '1') === 5 ? 1 / 1.5 : 1;
   const equipmentMultiplier = Math.max(0.1, 1 - getEquipmentBonus(tower, 'speed'));
+  if (gameSpeed === 0) return Infinity;
   return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80) * attributeMultiplier * starMultiplier * equipmentMultiplier / gameSpeed;
 }
 
@@ -813,7 +910,8 @@ function openUpgradeModal(tower) {
   if (!board.contains(tower)) return;
   if (selectedTower && selectedTower !== tower) selectedTower.classList.remove('selected');
   selectedTower = tower;
-  isGamePaused = true;
+  isUpgradeModalOpen = true;
+  updateGamePausedState();
   tower.classList.add('selected');
   refreshUpgradeModal();
   upgradeModal.classList.remove('hidden');
@@ -822,7 +920,8 @@ function openUpgradeModal(tower) {
 function closeUpgradeModal() {
   if (selectedTower) selectedTower.classList.remove('selected');
   selectedTower = null;
-  isGamePaused = false;
+  isUpgradeModalOpen = false;
+  updateGamePausedState();
   upgradeModal.classList.add('hidden');
 }
 
@@ -840,6 +939,192 @@ function sellSelectedTower() {
   updateInventoryView();
   refreshUpgradeUi();
   updateTopStatus();
+}
+
+function openTowerActionPopup(tower) {
+  waitingTowerActionTarget = tower;
+  renderTowerActionPopup();
+  towerActionPopup.classList.remove('hidden');
+  positionTowerActionPopup(tower);
+}
+
+function positionTowerActionPopup(tower) {
+  const rect = tower.getBoundingClientRect();
+  towerActionPanel.style.left = `${rect.left + rect.width / 2}px`;
+  towerActionPanel.style.top = `${rect.top + rect.height / 2}px`;
+
+  const margin = 10;
+  const panelRect = towerActionPanel.getBoundingClientRect();
+  let shiftX = 0;
+  let shiftY = 0;
+  if (panelRect.left < margin) shiftX = margin - panelRect.left;
+  if (panelRect.right > window.innerWidth - margin) shiftX = window.innerWidth - margin - panelRect.right;
+  if (panelRect.top < margin) shiftY = margin - panelRect.top;
+  if (panelRect.bottom > window.innerHeight - margin) shiftY = window.innerHeight - margin - panelRect.bottom;
+  if (shiftX || shiftY) {
+    towerActionPanel.style.left = `${rect.left + rect.width / 2 + shiftX}px`;
+    towerActionPanel.style.top = `${rect.top + rect.height / 2 + shiftY}px`;
+  }
+}
+
+function renderTowerActionPopup() {
+  const tower = waitingTowerActionTarget;
+  if (!tower) return;
+
+  const lv = tower.dataset.lv;
+  const star = parseInt(tower.dataset.star || '1');
+  const attribute = tower.dataset.attribute || 'none';
+  towerActionTitle.textContent = `${lv} Lv 포탑`;
+  towerActionSubtitle.textContent = `${getStarText(star)} · ${getAttributeText(attribute) || '속성 없음'}`;
+  towerActionDeleteBtn.textContent = `삭제 (+${getTowerSellPrice(tower)} $)`;
+  towerActionDisassembleBtn.disabled = attribute === 'none';
+  towerActionDisassembleBtn.textContent = attribute === 'none' ? '분해 (속성 없음)' : `분해 (${getAttributeText(attribute)} 구슬)`;
+}
+
+function hideTowerActionPopup() {
+  towerActionPopup.classList.add('hidden');
+}
+
+function cancelTowerAction() {
+  hideTowerActionPopup();
+  waitingTowerActionTarget = null;
+}
+
+function disassembleWaitingTower() {
+  const tower = waitingTowerActionTarget;
+  if (!tower) return;
+
+  const attribute = tower.dataset.attribute || 'none';
+  if (attribute === 'none') return;
+
+  hideTowerActionPopup();
+  addAttributeOrb(attribute, 1);
+  tower.remove();
+  waitingTowerActionTarget = null;
+  updateInventoryView();
+  refreshUpgradeUi();
+}
+
+function openDeleteTowerModal() {
+  if (!waitingTowerActionTarget) return;
+  deleteTowerCostText.textContent = `삭제 시 ${getTowerSellPrice(waitingTowerActionTarget)} $ 을 돌려받습니다.`;
+  deleteTowerModal.classList.remove('hidden');
+}
+
+function closeDeleteTowerModal() {
+  deleteTowerModal.classList.add('hidden');
+  waitingTowerActionTarget = null;
+}
+
+function confirmDeleteTower() {
+  if (!waitingTowerActionTarget) return;
+
+  coins += getTowerSellPrice(waitingTowerActionTarget);
+  waitingTowerActionTarget.remove();
+  closeDeleteTowerModal();
+  updateInventoryView();
+  refreshUpgradeUi();
+}
+
+function openFusionModal() {
+  if (!waitingTowerActionTarget) return;
+  renderFusionModal();
+  fusionModal.classList.remove('hidden');
+}
+
+function closeFusionModal() {
+  fusionModal.classList.add('hidden');
+  waitingTowerActionTarget = null;
+}
+
+function renderFusionModal() {
+  const tower = waitingTowerActionTarget;
+  if (!tower) return;
+
+  const currentAttribute = tower.dataset.attribute || 'none';
+  fusionCurrentAttributeText.textContent = `현재 속성: ${getAttributeText(currentAttribute) || '없음'}`;
+
+  const entries = getOwnedAttributeOrbEntries();
+  fusionOrbList.innerHTML = entries.length
+    ? entries.map(getOrbChipHtml).join('')
+    : '<p class="fusion-empty">보유 중인 속성 구슬이 없습니다. 대장장에서 확인하세요.</p>';
+}
+
+function applyFusionOrb(attribute) {
+  const tower = waitingTowerActionTarget;
+  if (!tower || (attributeOrbs[attribute] || 0) < 1) return;
+
+  attributeOrbs[attribute] -= 1;
+  setTowerAttribute(tower, attribute);
+  closeFusionModal();
+  updateInventoryView();
+}
+
+function openBlacksmithModal() {
+  forgeSlots = [null, null];
+  forgeActiveSlot = null;
+  refreshBlacksmithModal();
+  blacksmithModal.classList.remove('hidden');
+}
+
+function closeBlacksmithModal() {
+  blacksmithModal.classList.add('hidden');
+  forgeSlots = [null, null];
+  forgeActiveSlot = null;
+}
+
+function refreshBlacksmithModal() {
+  blacksmithOrbList.innerHTML = getBlacksmithDisplayEntries().map(getOrbChipHtml).join('');
+
+  [0, 1].forEach(index => {
+    const slotBtn = index === 0 ? forgeSlot0Btn : forgeSlot1Btn;
+    const key = forgeSlots[index];
+    slotBtn.textContent = key ? getAttributeText(key) : '+';
+    slotBtn.className = `forge-slot${key ? ` attribute-${getAttributeClass(key)}` : ''}${forgeActiveSlot === index ? ' active' : ''}`;
+  });
+
+  const resultKey = forgeSlots[0] && forgeSlots[1] ? getFusedAttributeKey(forgeSlots[0], forgeSlots[1]) : null;
+  forgeResultEl.textContent = resultKey ? getAttributeText(resultKey) : '?';
+  forgeResultEl.className = `forge-slot forge-result${resultKey ? ` attribute-${getAttributeClass(resultKey)}` : ''}`;
+
+  forgeCombineBtn.disabled = !hasEnoughOrbsForForge();
+}
+
+function hasEnoughOrbsForForge() {
+  const [first, second] = forgeSlots;
+  if (!first || !second) return false;
+  if (first === second) return (attributeOrbs[first] || 0) >= 2;
+  return (attributeOrbs[first] || 0) >= 1 && (attributeOrbs[second] || 0) >= 1;
+}
+
+function selectForgeSlot(index) {
+  if (forgeSlots[index]) {
+    forgeSlots[index] = null;
+    forgeActiveSlot = null;
+    refreshBlacksmithModal();
+    return;
+  }
+  forgeActiveSlot = forgeActiveSlot === index ? null : index;
+  refreshBlacksmithModal();
+}
+
+function assignForgeOrb(attribute) {
+  if (forgeActiveSlot === null || (attributeOrbs[attribute] || 0) < 1) return;
+  forgeSlots[forgeActiveSlot] = attribute;
+  forgeActiveSlot = null;
+  refreshBlacksmithModal();
+}
+
+function combineForge() {
+  if (!hasEnoughOrbsForForge()) return;
+
+  const [first, second] = forgeSlots;
+  attributeOrbs[first] -= 1;
+  attributeOrbs[second] -= 1;
+  addAttributeOrb(getFusedAttributeKey(first, second), 1);
+  forgeSlots = [null, null];
+  forgeActiveSlot = null;
+  refreshBlacksmithModal();
 }
 
 function refreshUpgradeModal() {
@@ -1178,7 +1463,9 @@ function makeDraggable(elem) {
 
   elem.addEventListener('click', e => {
     e.stopPropagation();
-    if (elem.classList.contains('tower') && board.contains(elem)) openUpgradeModal(elem);
+    if (!elem.classList.contains('tower')) return;
+    if (board.contains(elem)) { openUpgradeModal(elem); return; }
+    if (createBar.contains(elem)) openTowerActionPopup(elem);
   });
 
   elem.addEventListener('dragover', e => { e.preventDefault(); });
@@ -1203,6 +1490,7 @@ function makeDraggable(elem) {
       releaseTowerEquipment(draggedTower);
       releaseTowerEquipment(elem);
       if (draggedTower === selectedTower || elem === selectedTower) closeUpgradeModal();
+      if (draggedTower === waitingTowerActionTarget || elem === waitingTowerActionTarget) cancelTowerAction();
       draggedTower.remove();
       elem.remove();
 
@@ -1315,10 +1603,11 @@ function move(from, to) {
       const id = draggedTower.dataset.id;
 
       if (draggedTower === selectedTower) closeUpgradeModal();
+      if (draggedTower === waitingTowerActionTarget) cancelTowerAction();
       from.removeChild(draggedTower);
 
       const div = document.createElement('div');
-      div.className = `tower star-${draggedTower.dataset.star || '1'} attribute-${draggedTower.dataset.attribute || 'none'}`;
+      div.className = `tower star-${draggedTower.dataset.star || '1'} attribute-${getAttributeClass(draggedTower.dataset.attribute || 'none')}`;
       div.innerHTML = getTowerHtml(lv, parseInt(draggedTower.dataset.star || '1'), draggedTower.dataset.attribute || 'none');
       div.draggable = true;
       div.dataset.lv = lv;
@@ -1804,6 +2093,17 @@ function useSkill(key) {
 }
 
 function refreshSkillBar() {
+  if (gameSpeed === 0) {
+    document.querySelectorAll('.skill-btn').forEach(button => {
+      button.disabled = true;
+      const cooldownText = button.querySelector('.skill-cooldown');
+      const cooldownFill = button.querySelector('.skill-cooldown-fill');
+      if (cooldownText) cooldownText.textContent = '정지';
+      if (cooldownFill) cooldownFill.style.height = '100%';
+    });
+    return;
+  }
+
   const now = Date.now();
   document.querySelectorAll('.skill-btn').forEach(button => {
     const key = button.dataset.skill;
@@ -1839,6 +2139,8 @@ function resetGameIntervals() {
   if (towerTimeInterval) clearInterval(towerTimeInterval);
   if (bossRecoverInterval) clearInterval(bossRecoverInterval);
   if (enemyTowerCombatInterval) clearInterval(enemyTowerCombatInterval);
+  updateGamePausedState();
+  if (gameSpeed === 0) return;
 
   const isTeamMode = window.TeamSession && window.TeamSession.isActive();
   const isWaveAuthority = !isTeamMode || window.TeamSession.isHost === true;
@@ -1859,9 +2161,9 @@ function resetGameIntervals() {
 }
 
 function toggleSpeedMode() {
-  if (gameSpeed === 1) gameSpeed = 2;
-  else if (gameSpeed === 2) gameSpeed = 5;
-  else gameSpeed = 1;
+  const currentIndex = GAME_SPEED_OPTIONS.indexOf(gameSpeed);
+  gameSpeed = GAME_SPEED_OPTIONS[(currentIndex + 1) % GAME_SPEED_OPTIONS.length];
+  updateGamePausedState();
   updateSpeedModeButton();
   resetGameIntervals();
   refreshSkillBar();
@@ -1904,6 +2206,61 @@ towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
 towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
 itemViewBtn.addEventListener('click', () => setInventoryView('item'));
+
+towerActionDeleteBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (!waitingTowerActionTarget) return;
+  hideTowerActionPopup();
+  openDeleteTowerModal();
+});
+towerActionDisassembleBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  disassembleWaitingTower();
+});
+towerActionFuseBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  hideTowerActionPopup();
+  openFusionModal();
+});
+towerActionCancelBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  cancelTowerAction();
+});
+towerActionPopup.addEventListener('click', e => {
+  if (e.target === towerActionPopup) cancelTowerAction();
+});
+
+closeDeleteTowerModalBtn.addEventListener('click', closeDeleteTowerModal);
+cancelDeleteTowerBtn.addEventListener('click', closeDeleteTowerModal);
+confirmDeleteTowerBtn.addEventListener('click', confirmDeleteTower);
+deleteTowerModal.addEventListener('click', e => {
+  if (e.target === deleteTowerModal) closeDeleteTowerModal();
+});
+
+closeFusionModalBtn.addEventListener('click', closeFusionModal);
+fusionCancelBtn.addEventListener('click', closeFusionModal);
+fusionModal.addEventListener('click', e => {
+  if (e.target === fusionModal) closeFusionModal();
+});
+fusionOrbList.addEventListener('click', e => {
+  const chip = e.target.closest('.orb-chip');
+  if (!chip) return;
+  applyFusionOrb(chip.dataset.attribute);
+});
+
+blacksmithBtn.addEventListener('click', openBlacksmithModal);
+closeBlacksmithModalBtn.addEventListener('click', closeBlacksmithModal);
+blacksmithModal.addEventListener('click', e => {
+  if (e.target === blacksmithModal) closeBlacksmithModal();
+});
+blacksmithOrbList.addEventListener('click', e => {
+  const chip = e.target.closest('.orb-chip');
+  if (!chip) return;
+  assignForgeOrb(chip.dataset.attribute);
+});
+forgeSlot0Btn.addEventListener('click', () => selectForgeSlot(0));
+forgeSlot1Btn.addEventListener('click', () => selectForgeSlot(1));
+forgeCombineBtn.addEventListener('click', combineForge);
 document.querySelectorAll('.skill-btn').forEach(button => {
   button.addEventListener('click', () => useSkill(button.dataset.skill));
 });

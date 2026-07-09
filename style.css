@@ -424,6 +424,12 @@ body {
   background: #c92a2a;
 }
 
+.tower-attribute-badge.attribute-fused,
+.orb-chip.attribute-fused,
+.forge-slot.attribute-fused {
+  background: linear-gradient(135deg, #ffd43b, #ff6b6b, #845ef7);
+}
+
 .tower.star-2 .tower-star-badge {
   color: #06251e;
   background: linear-gradient(180deg, #a8ffe8, #45d4ad);
@@ -917,6 +923,203 @@ body {
 
 .equipment-slot .equipment-effect {
   font-size: 11px;
+}
+
+.tower-action-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.tower-action-popup.hidden {
+  display: none;
+}
+
+.tower-action-panel {
+  position: fixed;
+  width: 220px;
+  padding: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.58);
+  border-radius: 14px;
+  color: white;
+  background: linear-gradient(180deg, rgba(33, 39, 70, 0.98), rgba(15, 18, 35, 0.98));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.tower-action-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.tower-action-subtitle {
+  margin: 4px 0 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tower-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tower-action-btn {
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #2478ff, #00a6a6);
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.tower-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.tower-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tower-action-btn.danger {
+  background: linear-gradient(135deg, #ff3b3b, #b3001f);
+}
+
+.tower-action-btn.ghost {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.danger-title {
+  margin: 0 0 12px 0;
+  color: #ff7373;
+  font-size: 24px;
+}
+
+#delete-tower-desc {
+  margin: 0 0 8px 0;
+  font-weight: 700;
+}
+
+.delete-tower-cost {
+  margin: 0 0 18px 0;
+  color: #ffe066;
+  font-weight: 900;
+}
+
+.delete-tower-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.orb-hint {
+  margin: 4px 0 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#fusion-current-attribute {
+  margin: 0 0 6px 0;
+  color: #ffe066;
+  font-weight: 900;
+}
+
+.orb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.orb-chip {
+  min-height: 56px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.orb-chip:hover {
+  transform: translateY(-1px);
+}
+
+.orb-chip .orb-name {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.orb-chip .orb-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.fusion-empty {
+  grid-column: 1 / -1;
+  padding: 14px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.forge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+
+.forge-sign {
+  font-size: 18px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.forge-slot {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  font-size: 12px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  text-align: center;
+  padding: 4px;
+}
+
+.forge-slot.active {
+  border-color: #ffe066;
+  box-shadow: 0 0 0 3px rgba(255, 224, 102, 0.28);
+}
+
+.forge-result {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.22);
+  cursor: default;
 }
 
 @media (max-width: 720px) {

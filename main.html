@@ -44,6 +44,7 @@
     <div id="inventory-toggle">
       <button id="tower-view-btn" type="button" class="inventory-tab active">포탑</button>
       <button id="item-view-btn" type="button" class="inventory-tab">아이템</button>
+      <button id="blacksmith-btn" type="button" class="inventory-tab">대장장</button>
     </div>
     <div id="btn-bar">
       <button id="create-btn" onclick="spawnBtn()" class="btn"><p id="spawnLv">1 생성</p><span id="price">1 $</span></button>
@@ -108,6 +109,62 @@
       </div>
     </div>
   </div>
+
+  <div id="tower-action-popup" class="tower-action-popup hidden">
+    <div id="tower-action-panel" class="tower-action-panel">
+      <p id="tower-action-title" class="tower-action-title">1 Lv 포탑</p>
+      <p id="tower-action-subtitle" class="tower-action-subtitle">1성 · 속성 없음</p>
+      <div class="tower-action-buttons">
+        <button id="tower-action-delete" type="button" class="tower-action-btn danger">삭제</button>
+        <button id="tower-action-disassemble" type="button" class="tower-action-btn">분해</button>
+        <button id="tower-action-fuse" type="button" class="tower-action-btn">융합</button>
+        <button id="tower-action-cancel" type="button" class="tower-action-btn ghost">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-tower-modal" class="modal hidden">
+    <div class="modal-panel">
+      <button id="close-delete-tower-modal" class="modal-close" type="button">x</button>
+      <h2 class="danger-title">포탑 삭제</h2>
+      <p id="delete-tower-desc">이 포탑을 정말 삭제하시겠습니까?</p>
+      <p id="delete-tower-cost" class="delete-tower-cost">삭제 시 0 $ 을 돌려받습니다.</p>
+      <div class="delete-tower-actions">
+        <button id="confirm-delete-tower-btn" type="button" class="sell-btn">삭제하기</button>
+        <button id="cancel-delete-tower-btn" type="button" class="tower-action-btn ghost">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fusion-modal" class="modal hidden">
+    <div class="modal-panel">
+      <button id="close-fusion-modal" class="modal-close" type="button">x</button>
+      <h2>속성 융합</h2>
+      <p id="fusion-current-attribute">현재 속성: 없음</p>
+      <p class="orb-hint">부여할 속성 구슬을 선택하세요.</p>
+      <div id="fusion-orb-list" class="orb-grid"></div>
+      <button id="fusion-cancel-btn" type="button" class="tower-action-btn ghost">취소</button>
+    </div>
+  </div>
+
+  <div id="blacksmith-modal" class="modal hidden">
+    <div class="modal-panel">
+      <button id="close-blacksmith-modal" class="modal-close" type="button">x</button>
+      <h2>대장간</h2>
+      <p class="orb-hint">보유 중인 속성 구슬</p>
+      <div id="blacksmith-orb-list" class="orb-grid"></div>
+      <p class="orb-hint">구슬 두 개를 골라 새로운 속성 구슬을 만드세요.</p>
+      <div class="forge-row">
+        <button id="forge-slot-0" type="button" class="forge-slot">+</button>
+        <span class="forge-sign">+</span>
+        <button id="forge-slot-1" type="button" class="forge-slot">+</button>
+        <span class="forge-sign">→</span>
+        <div id="forge-result" class="forge-slot forge-result">?</div>
+      </div>
+      <button id="forge-combine-btn" type="button" class="sell-btn" disabled>합성하기</button>
+    </div>
+  </div>
+
   <script src="supabase-config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="team.js"></script>
