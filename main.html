@@ -8,6 +8,7 @@
 </head>
 <body>
   <div id="game-board">
+    <button id="give-up-btn" class="give-up-btn" type="button">포기하기</button>
     <p id="name">Guest</p>
     <div id="top-status">
       <span id="survival-time">0초</span>
@@ -132,6 +133,19 @@
       <div class="delete-tower-actions">
         <button id="confirm-delete-tower-btn" type="button" class="sell-btn">삭제하기</button>
         <button id="cancel-delete-tower-btn" type="button" class="tower-action-btn ghost">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="give-up-modal" class="modal hidden">
+    <div class="modal-panel confirm-panel">
+      <button id="close-give-up-modal" class="modal-close" type="button">x</button>
+      <h2 class="danger-title">포기하기</h2>
+      <p class="confirm-desc">현재 게임을 포기하시겠습니까?</p>
+      <p class="confirm-warning">포기하면 저장된 진행 상황이 삭제되고 게임이 종료됩니다.</p>
+      <div class="confirm-actions">
+        <button id="confirm-give-up-btn" type="button" class="sell-btn">포기하기</button>
+        <button id="cancel-give-up-btn" type="button" class="tower-action-btn ghost">취소</button>
       </div>
     </div>
   </div>

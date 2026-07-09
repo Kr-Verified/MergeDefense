@@ -730,6 +730,27 @@ body {
   white-space: nowrap;
 }
 
+.give-up-btn {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 12;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 115, 115, 0.55);
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, #ff3b3b, #b3001f);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26);
+}
+
+.give-up-btn:hover {
+  transform: translateY(-1px);
+}
+
 #survival-time,
 #tower-count {
   color: #ffffff;
@@ -741,7 +762,7 @@ body {
 
 #name {
   position: absolute;
-  top: 14px;
+  top: 56px;
   left: 16px;
   margin: 0;
   color: rgb(190, 222, 255);
@@ -751,7 +772,7 @@ body {
 
 #team-mode-badge {
   position: absolute;
-  top: 68px;
+  top: 110px;
   left: 16px;
   margin: 0;
   padding: 4px 10px;
@@ -792,7 +813,7 @@ body {
 
 #team-player-list {
   position: absolute;
-  top: 100px;
+  top: 142px;
   left: 16px;
   max-width: 46vw;
   margin: 0;
@@ -1152,6 +1173,29 @@ body {
   margin: 0 0 12px 0;
   color: #ff7373;
   font-size: 24px;
+}
+
+.confirm-panel {
+  text-align: center;
+}
+
+.confirm-desc {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.confirm-warning {
+  margin: 0 0 18px 0;
+  color: rgba(255, 210, 210, 0.82);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
 
 #delete-tower-desc {

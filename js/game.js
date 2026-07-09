@@ -72,6 +72,20 @@ function getInstalledTowerCount() {
   return [...board.querySelectorAll('.tower')].length;
 }
 
+function openGiveUpModal() {
+  giveUpModal.classList.remove('hidden');
+}
+
+function closeGiveUpModal() {
+  giveUpModal.classList.add('hidden');
+}
+
+function confirmGiveUp() {
+  closeGiveUpModal();
+  if (typeof clearAllSavedGameStates === 'function') clearAllSavedGameStates();
+  endGame();
+}
+
 function refreshUpgradeUi() {
   updateTopStatus();
   refreshCreateUpgradeButton();
@@ -184,6 +198,13 @@ towerLimitBtn.addEventListener('click', upgradeTowerLimit);
 speedModeBtn.addEventListener('click', toggleSpeedMode);
 towerViewBtn.addEventListener('click', () => setInventoryView('tower'));
 itemViewBtn.addEventListener('click', () => setInventoryView('item'));
+giveUpBtn.addEventListener('click', openGiveUpModal);
+closeGiveUpModalBtn.addEventListener('click', closeGiveUpModal);
+cancelGiveUpBtn.addEventListener('click', closeGiveUpModal);
+confirmGiveUpBtn.addEventListener('click', confirmGiveUp);
+giveUpModal.addEventListener('click', e => {
+  if (e.target === giveUpModal) closeGiveUpModal();
+});
 
 towerActionDeleteBtn.addEventListener('click', e => {
   e.stopPropagation();

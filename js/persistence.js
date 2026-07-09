@@ -297,6 +297,16 @@ function clearSavedGameState() {
   }
 }
 
+function clearAllSavedGameStates() {
+  try {
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('mergedefense:'))
+      .forEach(key => localStorage.removeItem(key));
+  } catch (error) {
+    console.error('게임 저장 전체 삭제에 실패했습니다.', error);
+  }
+}
+
 function startGameAutosave() {
   restoreSavedGameState();
   setInterval(saveGameStateToStorage, 1000);
