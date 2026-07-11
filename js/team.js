@@ -164,7 +164,7 @@
         const isSelf = entry.clientId === session.clientId;
         const span = document.createElement('span');
         span.className = isSelf ? 'team-coin-entry self' : 'team-coin-entry';
-        span.textContent = `${entry.name || 'Guest'}${isSelf ? ' (나)' : ''} ${Math.floor(entry.coins)} $`;
+        span.textContent = `${entry.name || 'Guest'}${isSelf ? ' (나)' : ''} ${formatNumber(Math.floor(entry.coins))} $`;
         list.appendChild(span);
       });
   }

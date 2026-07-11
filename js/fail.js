@@ -54,21 +54,21 @@ if (params.get('team') === '1') {
     rosterEl.appendChild(mateSpan);
   });
 
-  document.getElementById('team-time').textContent = `팀 생존 시간: ${seconds}초`;
+  document.getElementById('team-time').textContent = `팀 생존 시간: ${formatNumber(seconds)}초`;
   document.getElementById('team-summary').classList.remove('hidden');
 
   shareText = mateNames.length
-    ? `머지디펜스에서 ${selfName}님이 ${mateNames.join(', ')}님과 함께 ${seconds}초 동안 생존했습니다! 나도 도전해보기 →`
-    : `머지디펜스에서 ${selfName}님이 ${seconds}초 동안 생존했습니다! 나도 도전해보기 →`;
+    ? `머지디펜스에서 ${selfName}님이 ${mateNames.join(', ')}님과 함께 ${formatNumber(seconds)}초 동안 생존했습니다! 나도 도전해보기 →`
+    : `머지디펜스에서 ${selfName}님이 ${formatNumber(seconds)}초 동안 생존했습니다! 나도 도전해보기 →`;
 } else {
   const name = params.get('name') || localStorage.getItem('name') || 'Guest';
   const seconds = parseInt(params.get('time') || '0', 10);
 
   const summaryEl = document.getElementById('solo-summary');
-  summaryEl.textContent = `${name}님의 생존 시간: ${seconds}초`;
+  summaryEl.textContent = `${name}님의 생존 시간: ${formatNumber(seconds)}초`;
   summaryEl.classList.remove('hidden');
 
-  shareText = `머지디펜스에서 ${name}님이 ${seconds}초 동안 생존했습니다! 나도 도전해보기 →`;
+  shareText = `머지디펜스에서 ${name}님이 ${formatNumber(seconds)}초 동안 생존했습니다! 나도 도전해보기 →`;
 }
 
 const shareBtn = document.getElementById('share-btn');

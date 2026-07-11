@@ -99,8 +99,8 @@ function getSelectedUpgradeCost(key) {
 function getUpgradeAmountLabel(key) {
   if (getRemainingUpgradeCount(key) <= 0) return '최대';
   const amount = selectedUpgradeAmounts[key] || '1';
-  if (amount !== 'max') return `x${amount}`;
-  return `max x${getMaxAffordableUpgradeCount(key)}`;
+  if (amount !== 'max') return `x${formatNumber(amount)}`;
+  return `max x${formatNumber(getMaxAffordableUpgradeCount(key))}`;
 }
 
 function setupUpgradeAmountControls(button, key) {
@@ -143,14 +143,14 @@ function refreshGlobalUpgradeButtons() {
   const criticalDamageCost = getSelectedUpgradeCost('criticalDamage');
   const castleHealthCost = getSelectedUpgradeCost('castleHealth');
 
-  globalSpeedBtn.textContent = `전체 속도 Lv.${globalSpeedUpgrade} ${getUpgradeAmountLabel('globalSpeed')} ${speedCost} $`;
-  globalPowerBtn.textContent = `전체 힘 Lv.${globalPowerUpgrade} ${getUpgradeAmountLabel('globalPower')} ${powerCost} $`;
-  globalRangeBtn.textContent = `전체 범위 Lv.${globalRangeUpgrade} ${getUpgradeAmountLabel('globalRange')} ${rangeCost} $`;
-  criticalChanceBtn.textContent = `치명타 확률 ${Math.round(getCriticalChance(document.body) * 100)}% ${getUpgradeAmountLabel('criticalChance')} ${criticalChanceCost} $`;
-  criticalDamageBtn.textContent = `치명타 피해 ${(getCriticalDamageMultiplier(document.body)).toFixed(1)}배 ${getUpgradeAmountLabel('criticalDamage')} ${criticalDamageCost} $`;
-  castleHealthBtn.textContent = `성 체력 Lv.${castleHealthUpgrade} ${getUpgradeAmountLabel('castleHealth')} ${castleHealthCost} $`;
+  globalSpeedBtn.textContent = `전체 속도 Lv.${formatNumber(globalSpeedUpgrade)} ${getUpgradeAmountLabel('globalSpeed')} ${formatNumber(speedCost)} $`;
+  globalPowerBtn.textContent = `전체 힘 Lv.${formatNumber(globalPowerUpgrade)} ${getUpgradeAmountLabel('globalPower')} ${formatNumber(powerCost)} $`;
+  globalRangeBtn.textContent = `전체 범위 Lv.${formatNumber(globalRangeUpgrade)} ${getUpgradeAmountLabel('globalRange')} ${formatNumber(rangeCost)} $`;
+  criticalChanceBtn.textContent = `치명타 확률 ${formatNumber(Math.round(getCriticalChance(document.body) * 100))}% ${getUpgradeAmountLabel('criticalChance')} ${formatNumber(criticalChanceCost)} $`;
+  criticalDamageBtn.textContent = `치명타 피해 ${formatNumber(getCriticalDamageMultiplier(document.body), 1, 1)}배 ${getUpgradeAmountLabel('criticalDamage')} ${formatNumber(criticalDamageCost)} $`;
+  castleHealthBtn.textContent = `성 체력 Lv.${formatNumber(castleHealthUpgrade)} ${getUpgradeAmountLabel('castleHealth')} ${formatNumber(castleHealthCost)} $`;
   const towerLimitCost = getSelectedUpgradeCost('towerLimit');
-  towerLimitBtn.textContent = `설치 최대치 ${getInstalledTowerCount()} / ${towerLimit} ${getUpgradeAmountLabel('towerLimit')} ${towerLimitCost} $`;
+  towerLimitBtn.textContent = `설치 최대치 ${formatNumber(getInstalledTowerCount())} / ${formatNumber(towerLimit)} ${getUpgradeAmountLabel('towerLimit')} ${formatNumber(towerLimitCost)} $`;
   globalSpeedBtn.disabled = getSelectedUpgradeCount('globalSpeed') < 1 || coins < speedCost;
   globalPowerBtn.disabled = getSelectedUpgradeCount('globalPower') < 1 || coins < powerCost;
   globalRangeBtn.disabled = getSelectedUpgradeCount('globalRange') < 1 || coins < rangeCost;
@@ -211,17 +211,17 @@ function refreshUpgradeModal() {
     return;
   }
 
-  towerLevelText.textContent = `Lv ${selectedTower.dataset.lv}`;
+  towerLevelText.textContent = `Lv ${formatNumber(selectedTower.dataset.lv)}`;
   const towerStar = parseInt(selectedTower.dataset.star || '1');
   const attributeText = getAttributeText(selectedTower.dataset.attribute || 'none');
-  towerStarText.textContent = `${getStarText(towerStar)} 공격력 ${getTowerStarDamageMultiplier(towerStar)}배${attributeText ? ` / ${attributeText}` : ''}`;
-  towerDamageText.textContent = `공격 힘: ${getTowerDamage(selectedTower)}`;
-  towerSpeedText.textContent = `공격 속도: ${(1000 / getTowerAttackInterval(selectedTower)).toFixed(2)}회/초`;
-  towerRangeText.textContent = `공격 범위: ${getTowerRange(selectedTower)}`;
-  towerHpText.textContent = `체력: ${parseInt(selectedTower.dataset.hp || '0')} / ${parseInt(selectedTower.dataset.maxHp || '0')}${Date.now() < parseInt(selectedTower.dataset.stunUntil || '0') ? ' (기절)' : ''}`;
-  towerTimeText.textContent = `타임: ${parseInt(selectedTower.dataset.time || '0')}`;
+  towerStarText.textContent = `${getStarText(towerStar)} 공격력 ${formatNumber(getTowerStarDamageMultiplier(towerStar))}배${attributeText ? ` / ${attributeText}` : ''}`;
+  towerDamageText.textContent = `공격 힘: ${formatNumber(getTowerDamage(selectedTower))}`;
+  towerSpeedText.textContent = `공격 속도: ${formatNumber(1000 / getTowerAttackInterval(selectedTower), 2, 2)}회/초`;
+  towerRangeText.textContent = `공격 범위: ${formatNumber(getTowerRange(selectedTower))}`;
+  towerHpText.textContent = `체력: ${formatNumber(parseInt(selectedTower.dataset.hp || '0'))} / ${formatNumber(parseInt(selectedTower.dataset.maxHp || '0'))}${Date.now() < parseInt(selectedTower.dataset.stunUntil || '0') ? ' (기절)' : ''}`;
+  towerTimeText.textContent = `타임: ${formatNumber(parseInt(selectedTower.dataset.time || '0'))}`;
   const deleteCost = getTowerDeleteCost(selectedTower);
-  sellTowerBtn.textContent = `포탑 삭제 -${deleteCost} $`;
+  sellTowerBtn.textContent = `포탑 삭제 -${formatNumber(deleteCost)} $`;
   sellTowerBtn.disabled = coins < deleteCost;
   refreshEquipmentSlots();
   refreshTargetingOptions();
@@ -240,14 +240,14 @@ function refreshUpgradeModal() {
   const timeHpCost = getTimeUpgradeCostForCount(selectedTower, 'hp', timeHpCount);
   const starUpgradeCost = getTowerStarUpgradeCost(selectedTower);
 
-  upgradeSpeedBtn.textContent = `공격 속도 향상 ${getUpgradeAmountLabel('towerSpeed')} ${speedCost} $`;
-  upgradePowerBtn.textContent = `공격 힘 향상 ${getUpgradeAmountLabel('towerPower')} ${powerCost} $`;
-  upgradeRangeBtn.textContent = `공격 범위 향상 ${getUpgradeAmountLabel('towerRange')} ${rangeCost} $`;
-  upgradeHpBtn.textContent = `최대 체력 향상 ${getUpgradeAmountLabel('towerHp')} ${hpCost} $`;
-  timeUpgradeSpeedBtn.textContent = `타임 속도 향상 ${getTimeUpgradeAmountLabel('speed')} ${timeSpeedCost} T`;
-  timeUpgradePowerBtn.textContent = `타임 힘 향상 ${getTimeUpgradeAmountLabel('power')} ${timePowerCost} T`;
-  timeUpgradeRangeBtn.textContent = `타임 범위 향상 ${getTimeUpgradeAmountLabel('range')} ${timeRangeCost} T`;
-  timeUpgradeHpBtn.textContent = `타임 체력 향상 ${getTimeUpgradeAmountLabel('hp')} ${timeHpCost} T`;
+  upgradeSpeedBtn.textContent = `공격 속도 향상 ${getUpgradeAmountLabel('towerSpeed')} ${formatNumber(speedCost)} $`;
+  upgradePowerBtn.textContent = `공격 힘 향상 ${getUpgradeAmountLabel('towerPower')} ${formatNumber(powerCost)} $`;
+  upgradeRangeBtn.textContent = `공격 범위 향상 ${getUpgradeAmountLabel('towerRange')} ${formatNumber(rangeCost)} $`;
+  upgradeHpBtn.textContent = `최대 체력 향상 ${getUpgradeAmountLabel('towerHp')} ${formatNumber(hpCost)} $`;
+  timeUpgradeSpeedBtn.textContent = `타임 속도 향상 ${getTimeUpgradeAmountLabel('speed')} ${formatNumber(timeSpeedCost)} T`;
+  timeUpgradePowerBtn.textContent = `타임 힘 향상 ${getTimeUpgradeAmountLabel('power')} ${formatNumber(timePowerCost)} T`;
+  timeUpgradeRangeBtn.textContent = `타임 범위 향상 ${getTimeUpgradeAmountLabel('range')} ${formatNumber(timeRangeCost)} T`;
+  timeUpgradeHpBtn.textContent = `타임 체력 향상 ${getTimeUpgradeAmountLabel('hp')} ${formatNumber(timeHpCost)} T`;
   timeUpgradeStarBtn.textContent = getTowerStarUpgradeText(selectedTower);
   upgradeSpeedBtn.disabled = getSelectedUpgradeCount('towerSpeed') < 1 || coins < speedCost;
   upgradePowerBtn.disabled = getSelectedUpgradeCount('towerPower') < 1 || coins < powerCost;
@@ -314,8 +314,8 @@ function getTimeUpgradeAmountLabel(type) {
   if (getRemainingTimeUpgradeCount(type) <= 0) return '최대';
   const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : type === 'range' ? 'towerRange' : 'towerHp';
   const amount = selectedUpgradeAmounts[amountKey] || '1';
-  if (amount !== 'max') return `x${amount}`;
-  return `max x${getMaxAffordableTimeUpgradeCount(type)}`;
+  if (amount !== 'max') return `x${formatNumber(amount)}`;
+  return `max x${formatNumber(getMaxAffordableTimeUpgradeCount(type))}`;
 }
 
 function getRemainingTimeUpgradeCount(type) {
@@ -333,7 +333,7 @@ function getTowerStarUpgradeText(tower) {
   const nextStar = parseInt(tower.dataset.star || '1') + 1;
   const cost = TOWER_STAR_UPGRADE_COSTS[nextStar];
   if (!cost) return '최대 성급';
-  return `${nextStar}성으로 업그레이드 ${cost} T`;
+  return `${formatNumber(nextStar)}성으로 업그레이드 ${formatNumber(cost)} T`;
 }
 
 function refreshTargetingOptions() {

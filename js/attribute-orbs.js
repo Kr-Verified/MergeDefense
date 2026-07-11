@@ -137,7 +137,7 @@ function getOrbChipHtml(entry) {
   return `
     <div class="orb-chip attribute-${getAttributeClass(entry.key)}" data-attribute="${entry.key}">
       <span class="orb-name">${getAttributeText(entry.key)}</span>
-      <span class="orb-count">x${entry.count}</span>
+      <span class="orb-count">x${formatNumber(entry.count)}</span>
     </div>
   `;
 }
@@ -216,10 +216,10 @@ function renderTowerActionPopup() {
   const lv = tower.dataset.lv;
   const star = parseInt(tower.dataset.star || '1');
   const attribute = tower.dataset.attribute || 'none';
-  towerActionTitle.textContent = `${lv} Lv 포탑`;
+  towerActionTitle.textContent = `${formatNumber(lv)} Lv 포탑`;
   towerActionSubtitle.textContent = `${getStarText(star)} · ${getAttributeText(attribute) || '속성 없음'}`;
   const deleteCost = getTowerDeleteCost(tower);
-  towerActionDeleteBtn.textContent = `삭제 (-${deleteCost} $)`;
+  towerActionDeleteBtn.textContent = `삭제 (-${formatNumber(deleteCost)} $)`;
   towerActionDeleteBtn.disabled = coins < deleteCost;
   towerActionDisassembleBtn.disabled = attribute === 'none';
   towerActionDisassembleBtn.textContent = attribute === 'none' ? '분해 (속성 없음)' : `분해 (${getAttributeText(attribute)} 구슬)`;
@@ -254,7 +254,7 @@ function disassembleWaitingTower() {
 function refreshDeleteTowerModal() {
   if (!waitingTowerActionTarget) return;
   const cost = getTowerDeleteCost(waitingTowerActionTarget);
-  deleteTowerCostText.textContent = `삭제 시 ${cost} $ 이 소모됩니다.`;
+  deleteTowerCostText.textContent = `삭제 시 ${formatNumber(cost)} $ 이 소모됩니다.`;
   confirmDeleteTowerBtn.disabled = coins < cost;
 }
 

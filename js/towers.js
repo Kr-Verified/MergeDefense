@@ -23,7 +23,7 @@ function getRandomTowerAttribute() {
 }
 
 function getStarText(star) {
-  return `${star}성`;
+  return `${formatNumber(star)}성`;
 }
 
 function getTowerStarDamageMultiplier(star) {
@@ -66,7 +66,7 @@ function getTowerHtml(lv, star, attribute = 'none') {
   const stars = '★'.repeat(star);
   const attributeText = getAttributeText(attribute);
   return `
-    <p class="tower-level">${lv} Lv</p>
+    <p class="tower-level">${formatNumber(lv)} Lv</p>
     <div class="tower-hp-bar"><div class="tower-hp-fill"></div></div>
     <div class="tower-image-wrap">
       <img src="./img/${lv}.png" alt="${lv} Lv tower">
@@ -220,7 +220,7 @@ function getCriticalDamageMultiplier(tower) {
 
 function refreshCreateUpgradeButton() {
   const cost = getSelectedUpgradeCost('create');
-  upgradeBtn.textContent = `생성 단계 향상 ${getUpgradeAmountLabel('create')} ${cost} $`;
+  upgradeBtn.textContent = `생성 단계 향상 ${getUpgradeAmountLabel('create')} ${formatNumber(cost)} $`;
   upgradeBtn.disabled = getSelectedUpgradeCount('create') < 1 || coins < cost;
   refreshUpgradeAmountControls();
 }

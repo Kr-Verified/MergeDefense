@@ -98,15 +98,15 @@ function getEnemyHtml(enemy) {
   const attributeText = getEnemyAttributeText(enemy.attribute);
   const bossText = parseInt(enemy.lv)%5==0 ? getEnemyAttributeText('boss') : '';
   return `
-    <p class="enemy-level">${enemy.lv} Lv</p>
+    <p class="enemy-level">${formatNumber(enemy.lv)} Lv</p>
     <div class="enemy-image-wrap">
       <img src="./enemyImg/${enemy.lv}.png" width="${size}px" alt="${enemy.lv} Lv enemy">
       <span class="enemy-star-badge">${stars}</span>
       ${attributeText ? `<span class="enemy-attribute-badge enemy-attribute-${enemy.attribute}">${attributeText}</span>` : ''}
       ${bossText ? `<span class="enemy-boss-badge">${bossText}</span>` : ''}
     </div>
-    <p class="enemy-hp">${Math.ceil(enemy.hp)} Hp</p>
-    <p class="enemy-damage">성 공격 ${enemy.castleDamage}</p>
+    <p class="enemy-hp">${formatNumber(Math.ceil(enemy.hp))} Hp</p>
+    <p class="enemy-damage">성 공격 ${formatNumber(enemy.castleDamage)}</p>
   `;
 }
 

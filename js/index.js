@@ -24,7 +24,7 @@ function renderRanking(rows) {
     item.className = 'ranking-row';
 
     const rank = document.createElement('span');
-    rank.textContent = `#${index + 1}`;
+    rank.textContent = `#${formatNumber(index + 1)}`;
 
     const name = document.createElement('span');
     name.className = 'ranking-name';
@@ -32,7 +32,7 @@ function renderRanking(rows) {
 
     const time = document.createElement('span');
     time.className = 'ranking-time';
-    time.textContent = `${row.survival_time || 0}초`;
+    time.textContent = `${formatNumber(row.survival_time || 0)}초`;
 
     item.append(rank, name, time);
     list.appendChild(item);

@@ -1,15 +1,15 @@
 function updateSurvivalTime() {
-  survivalTimeBar.textContent = `${survivedSeconds}초`;
+  survivalTimeBar.textContent = `${formatNumber(survivedSeconds)}초`;
 }
 
 function updateTopStatus() {
   updateSurvivalTime();
-  coinBar.textContent = `${coins} $`;
-  towerCountBar.textContent = `${getInstalledTowerCount()} / ${towerLimit} 포탑`;
+  coinBar.textContent = `${formatNumber(coins)} $`;
+  towerCountBar.textContent = `${formatNumber(getInstalledTowerCount())} / ${formatNumber(towerLimit)} 포탑`;
 }
 
 function updateHealthText() {
-  document.getElementById('health').textContent = `${Math.ceil(health)} / ${maxHealth} Hp`;
+  document.getElementById('health').textContent = `${formatNumber(Math.ceil(health))} / ${formatNumber(maxHealth)} Hp`;
 }
 
 function getSupabaseConfig() {
@@ -103,6 +103,51 @@ function applySpectatorMode() {
   document.getElementById('name').textContent = 'Guest';
 }
 
+function setCreateBarHeight(heightPx) {
+  const minHeight = 120;
+  const maxHeight = Math.floor(window.innerHeight * 0.65);
+  const clampedHeight = Math.max(minHeight, Math.min(maxHeight, heightPx));
+
+  document.documentElement.style.setProperty('--create-bar-height', `${clampedHeight}px`);
+  localStorage.setItem('mergedefense:createBarHeight', `${clampedHeight}`);
+}
+
+function initCreateBarResizer() {
+  const handle = document.getElementById('create-bar-resize-handle');
+  if (!handle) return;
+
+  const savedHeight = parseInt(localStorage.getItem('mergedefense:createBarHeight') || '', 10);
+  if (Number.isFinite(savedHeight)) setCreateBarHeight(savedHeight);
+
+  let startY = 0;
+  let startHeight = 0;
+  let activePointerId = null;
+
+  handle.addEventListener('pointerdown', e => {
+    startY = e.clientY;
+    startHeight = createBar.getBoundingClientRect().height;
+    activePointerId = e.pointerId;
+    handle.setPointerCapture(e.pointerId);
+    document.body.classList.add('resizing-create-bar');
+  });
+
+  handle.addEventListener('pointermove', e => {
+    if (activePointerId !== e.pointerId) return;
+    setCreateBarHeight(startHeight - (e.clientY - startY));
+  });
+
+  function stopResize(e) {
+    if (activePointerId !== e.pointerId) return;
+    activePointerId = null;
+    if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+    document.body.classList.remove('resizing-create-bar');
+  }
+
+  handle.addEventListener('pointerup', stopResize);
+  handle.addEventListener('pointercancel', stopResize);
+  window.addEventListener('resize', () => setCreateBarHeight(createBar.getBoundingClientRect().height));
+}
+
 function refreshUpgradeUi() {
   updateTopStatus();
   refreshCreateUpgradeButton();
@@ -192,8 +237,8 @@ function upgradeCreate() {
   if ( coins >= cost ) {
     coins -= cost;
     spawnLv += count;
-    spawnLvExpress.textContent = `${spawnLv} 생성`;
-    priceBar.textContent = `${getTowerCreateCost()} $`
+    spawnLvExpress.textContent = `${formatNumber(spawnLv)} 생성`;
+    priceBar.textContent = `${formatNumber(getTowerCreateCost())} $`
     refreshUpgradeUi();
     reportTeamSharedState();
   }
@@ -334,11 +379,13 @@ setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
 setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
 setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
 setupUpgradeAmountControls(upgradeHpBtn, 'towerHp');
+initCreateBarResizer();
 startGameAutosave();
 applySpectatorMode();
 updateHealthText();
 updateSpeedModeButton();
-priceBar.textContent = `${getTowerCreateCost()} $`;
+spawnLvExpress.textContent = `${formatNumber(spawnLv)} 생성`;
+priceBar.textContent = `${formatNumber(getTowerCreateCost())} $`;
 refreshUpgradeUi();
 updateInventoryView();
 refreshSkillBar();

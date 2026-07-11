@@ -2,6 +2,10 @@
   box-sizing: border-box;
 }
 
+:root {
+  --create-bar-height: 30vh;
+}
+
 body {
   margin: 0;
   overflow: hidden;
@@ -16,7 +20,7 @@ body {
 #game-board {
   position: relative;
   width: 100vw;
-  height: 70vh;
+  height: calc(100vh - var(--create-bar-height));
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
@@ -51,8 +55,8 @@ body {
 
 #create-bar {
   position: relative;
-  height: 30vh;
-  padding: 14px 28px;
+  height: var(--create-bar-height);
+  padding: 22px 28px 14px;
   border-top: 2px solid rgba(255, 215, 0, 0.42);
   background:
     linear-gradient(180deg, rgba(14, 19, 38, 0.92), rgba(10, 12, 24, 0.96)),
@@ -62,6 +66,39 @@ body {
   flex-wrap: wrap;
   gap: 10px;
   overflow-y: auto;
+}
+
+#create-bar-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  height: 12px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+#create-bar-resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 78px;
+  height: 4px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.28);
+  transform: translateX(-50%);
+}
+
+#create-bar-resize-handle:hover::before,
+body.resizing-create-bar #create-bar-resize-handle::before {
+  background-color: rgba(255, 224, 102, 0.85);
+}
+
+body.resizing-create-bar {
+  cursor: ns-resize;
+  user-select: none;
 }
 
 #inventory-toggle {

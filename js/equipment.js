@@ -24,7 +24,7 @@ function getEquipmentHtml(equipment) {
   const meta = EQUIPMENT_TYPES[equipment.type];
   return `
     <p class="equipment-name">${meta.name}</p>
-    <p class="equipment-effect">${meta.description} +${equipment.value}%</p>
+    <p class="equipment-effect">${meta.description} +${formatNumber(equipment.value)}%</p>
   `;
 }
 
@@ -86,7 +86,7 @@ function refreshEquipmentSlots() {
     slot.innerHTML = '';
 
     if (locked) {
-      slot.innerHTML = `<span>${unlockLevel}Lv 잠금</span>`;
+      slot.innerHTML = `<span>${formatNumber(unlockLevel)}Lv 잠금</span>`;
       return;
     }
 

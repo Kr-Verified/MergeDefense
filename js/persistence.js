@@ -260,8 +260,8 @@ function applyGameState(state) {
   });
   enemyId = maxEnemyId;
 
-  spawnLvExpress.textContent = `${spawnLv} 생성`;
-  priceBar.textContent = `${getTowerCreateCost()} $`;
+  spawnLvExpress.textContent = `${formatNumber(spawnLv)} 생성`;
+  priceBar.textContent = `${formatNumber(getTowerCreateCost())} $`;
   updateHealthText();
   updateSpeedModeButton();
   updateGamePausedState();
