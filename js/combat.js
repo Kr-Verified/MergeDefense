@@ -190,6 +190,7 @@ function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
 
   if (enemy.hp <= 0) {
     applyEnemyDeathEffects(enemy, sourceTower, damageType);
+    applyAttributeOnKillEffects(sourceTower, enemy);
     if (enemy.element._moveInterval) clearInterval(enemy.element._moveInterval);
     if (document.body.contains(enemy.element)) enemy.element.remove();
     addTowerTime(sourceTower, parseInt(enemy.element.dataset.lv || enemy.lv || '0'));
@@ -237,40 +238,29 @@ function applyRemoteCastleHit(amount) {
 
 function applyTowerHit(fromTower, targetEnemy) {
   const attribute = fromTower.dataset.attribute || 'none';
+  const config = getAttributeEffectConfig(attribute);
   const baseDamage = getTowerDamage(fromTower);
   const attackDamage = applyCriticalDamage(fromTower, baseDamage);
 
-  if (attribute === 'bomb') {
-    applyBombDamage(targetEnemy, attackDamage * 0.7, fromTower);
+  maybeTriggerUltimateBurst(fromTower);
+
+  if (!config) {
+    damageEnemy(targetEnemy, attackDamage, fromTower);
     return;
   }
 
-  const dealtDamage = damageEnemy(targetEnemy, attackDamage, fromTower);
-
-  if (attribute === 'blood') {
-    recoverCastleHealthByAmount(dealtDamage * 0.1);
+  if (config.splash) {
+    applyAttributeSplash(fromTower, targetEnemy, attackDamage, config);
+    return;
   }
 
-  if (attribute === 'water' && document.body.contains(targetEnemy.element)) {
-    targetEnemy.element.dataset.slowUntil = `${Date.now() + getEnemyControlDuration(targetEnemy, 3000, 'slow')}`;
-  }
-
-  if (attribute === 'wall' && document.body.contains(targetEnemy.element)) {
-    targetEnemy.element.dataset.stopUntil = `${Date.now() + getEnemyControlDuration(targetEnemy, 3000, 'stop')}`;
-  }
-
-  if (attribute === 'fire' && document.body.contains(targetEnemy.element)) {
-    applyFireDamage(targetEnemy, attackDamage, fromTower);
-  }
-
-  if (attribute === 'ball' && document.body.contains(targetEnemy.element)) {
-    promoteEnemyToThreeStar(targetEnemy);
-  }
+  const bonusMult = getAttributeBonusDamageMult(config, targetEnemy) * getStackingBonusMult(config, fromTower, targetEnemy);
+  const dealtDamage = damageEnemy(targetEnemy, attackDamage * bonusMult, fromTower);
+  applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config, attackDamage, 1);
 }
 
 function promoteEnemyToThreeStar(enemy) {
   if (enemy.star >= 3 || !document.body.contains(enemy.element)) return;
-  if (Math.random() >= 0.1) return;
 
   const attributeHpMultiplier = getEnemyAttributeMaxHpMultiplier(enemy.attribute);
   const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star) * attributeHpMultiplier;
@@ -286,43 +276,6 @@ function promoteEnemyToThreeStar(enemy) {
   enemy.element.dataset.maxHp = enemy.maxHp;
   enemy.element.dataset.castleDamage = enemy.castleDamage;
   enemy.element.innerHTML = getEnemyHtml(enemy);
-}
-
-function applyFireDamage(enemy, baseDamage, fromTower) {
-  let ticks = 0;
-  const fireInterval = setInterval(() => {
-    if (isGamePaused) return;
-
-    if (!document.body.contains(enemy.element)) {
-      clearInterval(fireInterval);
-      return;
-    }
-
-    ticks += 1;
-    damageEnemy(enemy, baseDamage * 0.25, fromTower, { type: 'dot' });
-
-    if (ticks >= 3) clearInterval(fireInterval);
-  }, 1000 / gameSpeed);
-}
-
-function applyBombDamage(targetEnemy, damage, fromTower) {
-  const targetRect = targetEnemy.element.getBoundingClientRect();
-  const targetX = targetRect.left + targetRect.width / 2;
-  const targetY = targetRect.top + targetRect.height / 2;
-  const bombRange = getBombRange(fromTower);
-
-  [...enemies].forEach(enemy => {
-    if (!document.body.contains(enemy.element)) return;
-
-    const enemyRect = enemy.element.getBoundingClientRect();
-    const enemyX = enemyRect.left + enemyRect.width / 2;
-    const enemyY = enemyRect.top + enemyRect.height / 2;
-    const dx = targetX - enemyX;
-    const dy = targetY - enemyY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist <= bombRange) damageEnemy(enemy, damage, fromTower, { type: 'bomb' });
-  });
 }
 
 function getTowerTarget(tower, towerRect, towerRange) {
@@ -412,6 +365,7 @@ function bossRecoverLoop() {
     let healAmount = 0;
     if (enemy.lv%5==0) healAmount += enemy.maxHp * 0.01;
     if (enemy.attribute === 'regen') healAmount += enemy.maxHp * 0.006;
+    if (Date.now() < parseInt(enemy.element.dataset.regenSuppressedUntil || '0', 10)) return;
     if (healAmount <= 0) return;
 
     enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);

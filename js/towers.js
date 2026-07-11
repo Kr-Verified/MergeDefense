@@ -183,8 +183,7 @@ function getTowerDamage(tower) {
   const star = parseInt(tower.dataset.star || '1');
   const powerUpgrade = parseInt(tower.dataset.powerUpgrade || '0');
   const baseDamage = Math.floor(Math.pow(lv, 1.5)) * 10;
-  let attributeMultiplier = tower.dataset.attribute === 'power' ? 2 : 1;
-  if (tower.dataset.attribute === 'blood') attributeMultiplier *= 0.5;
+  const attributeMultiplier = getAttributeDamageMult(tower.dataset.attribute || 'none') * getTowerActiveBuffDamageMult(tower);
   return Math.floor(baseDamage * getTowerStarDamageMultiplier(star) * attributeMultiplier * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2 + getEquipmentBonus(tower, 'power')));
 }
 
@@ -195,8 +194,7 @@ function getTowerRange(tower) {
 
 function getTowerAttackInterval(tower) {
   const speedUpgrade = parseInt(tower.dataset.speedUpgrade || '0');
-  let attributeMultiplier = tower.dataset.attribute === 'ball' ? 0.5 : 1;
-  if (tower.dataset.attribute === 'wall') attributeMultiplier *= 2;
+  const attributeMultiplier = getAttributeAtkIntervalMult(tower.dataset.attribute || 'none') * getTowerActiveBuffAtkIntervalMult(tower);
   const starMultiplier = parseInt(tower.dataset.star || '1') === 5 ? 1 / 1.5 : 1;
   const equipmentMultiplier = Math.max(0.1, 1 - getEquipmentBonus(tower, 'speed'));
   if (gameSpeed === 0) return Infinity;
@@ -204,7 +202,8 @@ function getTowerAttackInterval(tower) {
 }
 
 function getBombRange(tower) {
-  return Math.floor(130 * (1 + getEquipmentBonus(tower, 'splash')));
+  const splash = getAttributeSplashConfig(tower.dataset.attribute || 'none');
+  return Math.floor(130 * (splash?.radiusMult || 1) * (1 + getEquipmentBonus(tower, 'splash')));
 }
 
 function getCriticalChance(tower) {

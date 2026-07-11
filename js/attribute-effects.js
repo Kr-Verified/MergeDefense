@@ -231,6 +231,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
     if (stopUntil > parseInt(el.dataset.stopUntil || '0', 10)) el.dataset.stopUntil = `${stopUntil}`;
     const slowUntil = stopUntil + config.freeze.slowMs;
     if (slowUntil > parseInt(el.dataset.slowUntil || '0', 10)) el.dataset.slowUntil = `${slowUntil}`;
+    el.dataset.slowMult = `${config.freeze.slowMult}`;
   }
 
   if (config.slow) {
@@ -238,6 +239,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
       if (!document.body.contains(enemy.element)) return;
       const slowUntil = now + getEnemyControlDuration(enemy, config.slow.durationMs, 'slow');
       if (slowUntil > parseInt(enemy.element.dataset.slowUntil || '0', 10)) enemy.element.dataset.slowUntil = `${slowUntil}`;
+      enemy.element.dataset.slowMult = `${config.slow.speedMult}`;
     });
   }
 
@@ -431,15 +433,22 @@ function getAttributeEffectDescription(attribute) {
     const chanceText = config.stun.chance ? `${formatPercent(config.stun.chance)} 확률로 ` : '';
     const hitCountText = config.stun.afterHitCount ? `${config.stun.afterHitCount}회 공격마다 ` : '';
     const nearCastleText = config.stun.nearCastleOnly ? ' 성 근처의' : '';
-    clauses.push(`${hitCountText}${chanceText}공격 시${areaText}${nearCastleText} 적을 ${formatSeconds(config.stun.durationMs)}간 정지시킵니다.`);
+    const scaleText = config.stun.scalesWithMissingCastleHp ? ' 성 체력이 낮을수록 지속 시간이 최대 2배까지 증가합니다.' : '';
+    clauses.push(`${hitCountText}${chanceText}공격 시${areaText}${nearCastleText} 적을 ${formatSeconds(config.stun.durationMs)}간 정지시킵니다.${scaleText}`);
   }
 
   if (config.burn) {
-    clauses.push(`공격 시 1초마다 공격력의 ${formatPercent(config.burn.tickMult)}씩 ${config.burn.ticks}회(총 ${formatPercent(config.burn.tickMult * config.burn.ticks)}) 화상 피해를 입힙니다.`);
+    const conditionText = config.burn.whileControlledOnly
+      ? ' 둔화/정지 중인 적에게만 적용됩니다.'
+      : config.burn.triggersOnStunOnly
+        ? ' 정지된 적에게만 적용됩니다.'
+        : '';
+    clauses.push(`공격 시 1초마다 공격력의 ${formatPercent(config.burn.tickMult)}씩 ${config.burn.ticks}회(총 ${formatPercent(config.burn.tickMult * config.burn.ticks)}) 화상 피해를 입힙니다.${conditionText}`);
   }
 
   if (config.splash) {
-    clauses.push(`공격 시 반경 ${Math.round(130 * config.splash.radiusMult)} 내 적에게 공격력의 ${formatPercent(config.splash.damageMult)}만큼 피해를 줍니다.`);
+    const conditionText = config.splash.triggersOnStunOnly ? ' 정지된 적에게만 피해가 적용됩니다.' : '';
+    clauses.push(`공격 시 반경 ${Math.round(130 * config.splash.radiusMult)} 내 적에게 공격력의 ${formatPercent(config.splash.damageMult)}만큼 피해를 줍니다.${conditionText}`);
   }
 
   if (config.suppressRegen) {
@@ -463,15 +472,29 @@ function getAttributeEffectDescription(attribute) {
   }
 
   if (config.lifesteal) {
-    clauses.push(`준 피해의 ${formatPercent(config.lifesteal.percent)}만큼 성 체력을 회복합니다.`);
+    let targetText = '준 피해';
+    if (config.lifesteal.fromDotOnly) targetText = '지속 피해';
+    if (config.lifesteal.fromBonusOnly) targetText = '둔화/정지 추가 피해';
+    const hitCountText = config.lifesteal.scalesWithHitCount ? ' 맞은 적 수에 따라 최대 5배까지 증가합니다.' : '';
+    const missingText = config.lifesteal.scalesWithMissingCastleHp ? ' 성 체력이 낮을수록 회복량이 최대 2배까지 증가합니다.' : '';
+    const controlledText = config.lifesteal.requiresControlledTarget ? ' 둔화/정지 중인 적에게만 적용됩니다.' : '';
+    clauses.push(`${targetText}의 ${formatPercent(config.lifesteal.percent)}만큼 성 체력을 회복합니다.${hitCountText}${missingText}${controlledText}`);
   }
 
   if (config.bonusVsControlled && config.bonusVsControlled.appliesTo !== 'burn') {
     clauses.push(`둔화/정지 중인 적에게 ${formatMultiplier(config.bonusVsControlled.damageMult)}배 피해를 줍니다.`);
   }
 
+  if (config.bonusVsControlled && config.bonusVsControlled.appliesTo === 'burn') {
+    clauses.push(`둔화/정지 중인 적에게 화상 피해가 ${formatMultiplier(config.bonusVsControlled.damageMult)}배가 됩니다.`);
+  }
+
   if (config.bonusVsBoss && config.bonusVsBoss.appliesTo !== 'burn') {
     clauses.push(`보스(5의 배수 레벨)에게 ${formatMultiplier(config.bonusVsBoss.damageMult)}배 피해를 줍니다.`);
+  }
+
+  if (config.bonusVsBoss && config.bonusVsBoss.appliesTo === 'burn') {
+    clauses.push(`보스(5의 배수 레벨)에게 화상 피해가 ${formatMultiplier(config.bonusVsBoss.damageMult)}배가 됩니다.`);
   }
 
   if (config.bonusVsLowHp) {
@@ -479,15 +502,19 @@ function getAttributeEffectDescription(attribute) {
   }
 
   if (config.killHeal) {
-    clauses.push(`처치 시 적 최대 체력의 ${formatPercent(config.killHeal.percent)}만큼 성 체력을 회복합니다.`);
+    const conditionText = config.killHeal.requiresControlledAtDeath ? ' 둔화/정지 중인 적 처치 시에만 적용됩니다.' : '';
+    clauses.push(`처치 시 적 최대 체력의 ${formatPercent(config.killHeal.percent)}만큼 성 체력을 회복합니다.${conditionText}`);
   }
 
   if (config.onKillChainSplash) {
-    clauses.push(`처치 시 반경 ${Math.round(130 * config.onKillChainSplash.radiusMult)}에 공격력의 ${formatPercent(config.onKillChainSplash.damageMult)}만큼 연쇄 폭발 피해를 줍니다.`);
+    const chanceText = config.onKillChainSplash.chance ? `${formatPercent(config.onKillChainSplash.chance)} 확률로 ` : '';
+    clauses.push(`처치 시 ${chanceText}반경 ${Math.round(130 * config.onKillChainSplash.radiusMult)}에 공격력의 ${formatPercent(config.onKillChainSplash.damageMult)}만큼 연쇄 폭발 피해를 줍니다.`);
   }
 
   if (config.onKillBuff) {
-    clauses.push(`처치 시 ${formatSeconds(config.onKillBuff.durationMs)}간 공격력 ${formatMultiplier(config.onKillBuff.damageMult)}배로 강화됩니다.`);
+    const speedText = config.onKillBuff.atkIntervalMult ? ` 공격 속도는 ${formatMultiplier(1 / config.onKillBuff.atkIntervalMult)}배가 됩니다.` : '';
+    const healText = config.onKillBuff.lifestealBonusPercent ? ` 추가로 적 최대 체력의 ${formatPercent(config.onKillBuff.lifestealBonusPercent)}만큼 회복합니다.` : '';
+    clauses.push(`처치 시 ${formatSeconds(config.onKillBuff.durationMs)}간 공격력 ${formatMultiplier(config.onKillBuff.damageMult)}배로 강화됩니다.${speedText}${healText}`);
   }
 
   if (config.stackingDamage) {
@@ -495,7 +522,8 @@ function getAttributeEffectDescription(attribute) {
   }
 
   if (config.selfPauseCycle) {
-    clauses.push(`${formatSeconds(config.selfPauseCycle.activeMs)} 동안 공격 후 ${formatSeconds(config.selfPauseCycle.pauseMs)}간 멈춥니다.`);
+    const chanceText = config.selfPauseCycle.chance ? `${formatPercent(config.selfPauseCycle.chance)} 확률로 ` : '';
+    clauses.push(`${formatSeconds(config.selfPauseCycle.activeMs)} 동안 공격 후 ${chanceText}${formatSeconds(config.selfPauseCycle.pauseMs)}간 멈춥니다.`);
   }
 
   if (config.ultimateBurst) {

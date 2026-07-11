@@ -1,65 +1,65 @@
 const FUSION_RECIPES = [
-  { ingredients: ['water', 'water', 'water'], result: '빙결', effect: '적을 1초간 얼리고, 이후 3초간 둔화시킵니다.' },
-  { ingredients: ['fire', 'fire', 'fire'], result: '지옥불', effect: '5초 동안 강한 지속 피해를 줍니다. 지속 피해 중인 적은 회복 효과를 받지 못합니다.' },
-  { ingredients: ['bomb', 'bomb', 'bomb'], result: '핵폭발', effect: '매우 넓은 범위 피해를 주지만 공격 속도가 크게 느려집니다.' },
-  { ingredients: ['ball', 'ball', 'ball'], result: '광속', effect: '공격 속도가 매우 빨라지지만, 낮은 확률로 적을 3성 강화시킵니다.' },
-  { ingredients: ['power', 'power', 'power'], result: '거인', effect: '공격력이 크게 증가하지만 공격 속도가 약간 감소합니다.' },
-  { ingredients: ['wall', 'wall', 'wall'], result: '감옥', effect: '적을 짧게 정지시키고, 정지된 적이 받는 피해가 증가합니다.' },
-  { ingredients: ['blood', 'blood', 'blood'], result: '흡혈귀', effect: '준 피해의 일부만큼 성 체력을 회복하고, 체력이 낮을수록 회복량이 증가합니다.' },
-  { ingredients: ['water', 'fire', 'bomb'], result: '증기폭발', effect: '범위 피해를 주고, 맞은 적을 둔화시킵니다. 지속 피해도 약하게 적용됩니다.' },
-  { ingredients: ['water', 'fire', 'power'], result: '열탕', effect: '높은 피해를 주고 3초간 둔화와 지속 피해를 동시에 적용합니다.' },
-  { ingredients: ['water', 'fire', 'wall'], result: '냉각장벽', effect: '적을 잠시 정지시킨 뒤 둔화시키고, 정지 중일 때 지속 피해를 줍니다.' },
-  { ingredients: ['water', 'fire', 'blood'], result: '생명증기', effect: '적에게 지속 피해를 주며, 피해량 일부만큼 성 체력을 회복합니다.' },
-  { ingredients: ['water', 'bomb', 'ball'], result: '물폭풍', effect: '빠르게 공격하며 작은 범위 둔화를 일으킵니다.' },
-  { ingredients: ['water', 'bomb', 'power'], result: '해일', effect: '넓은 범위에 강한 피해를 주고 적들을 3초간 둔화시킵니다.' },
-  { ingredients: ['water', 'bomb', 'wall'], result: '홍수', effect: '범위 안의 적을 밀어내거나 잠시 정지시키고 둔화시킵니다.' },
-  { ingredients: ['water', 'bomb', 'blood'], result: '흡수파도', effect: '범위 피해를 주고, 맞은 적 수에 비례해 성 체력을 회복합니다.' },
-  { ingredients: ['water', 'ball', 'power'], result: '칼날비', effect: '빠른 공격으로 적을 둔화시키며, 둔화된 적에게 추가 피해를 줍니다.' },
-  { ingredients: ['water', 'ball', 'wall'], result: '시간감옥', effect: '공격 속도가 빠르고, 일정 횟수 공격한 적을 잠시 정지시킵니다.' },
-  { ingredients: ['water', 'ball', 'blood'], result: '피의 비', effect: '빠르게 공격하며 적을 둔화시키고, 피해 일부로 성 체력을 회복합니다.' },
-  { ingredients: ['water', 'power', 'wall'], result: '빙벽', effect: '강한 피해를 주고 적을 정지시킨 뒤 둔화시킵니다.' },
-  { ingredients: ['water', 'power', 'blood'], result: '냉혈', effect: '둔화된 적에게 더 큰 피해를 주고, 추가 피해량 일부를 회복합니다.' },
-  { ingredients: ['water', 'wall', 'blood'], result: '생명의 늪', effect: '범위 안 적을 느리게 만들고, 오래 머무를수록 성 체력을 회복합니다.' },
-  { ingredients: ['fire', 'bomb', 'ball'], result: '연쇄폭발', effect: '빠르게 공격하며 불이 붙은 적이 죽으면 작은 폭발을 일으킵니다.' },
-  { ingredients: ['fire', 'bomb', 'power'], result: '화산', effect: '강한 범위 피해와 지속 피해를 줍니다. 보스에게는 지속 피해 시간이 증가합니다.' },
-  { ingredients: ['fire', 'bomb', 'wall'], result: '지뢰장벽', effect: '적을 잠시 정지시키고 폭발 피해를 줍니다. 정지된 적에게 지속 피해가 더 강해집니다.' },
-  { ingredients: ['fire', 'bomb', 'blood'], result: '피폭발', effect: '범위 지속 피해를 주고, 불에 타는 적 수에 비례해 성 체력을 회복합니다.' },
-  { ingredients: ['fire', 'ball', 'power'], result: '광전사', effect: '공격 속도와 공격력이 모두 증가하지만, 일정 확률로 적을 강화시킵니다.' },
-  { ingredients: ['fire', 'ball', 'wall'], result: '화염사슬', effect: '빠르게 공격하며 일정 확률로 적을 묶어 정지시키고 불태웁니다.' },
-  { ingredients: ['fire', 'ball', 'blood'], result: '흡혈화염', effect: '빠른 지속 피해를 주고, 불 피해의 일부만큼 성 체력을 회복합니다.' },
-  { ingredients: ['fire', 'power', 'wall'], result: '용암', effect: '공격 속도는 느리지만 매우 강한 피해와 정지, 지속 피해를 동시에 줍니다.' },
-  { ingredients: ['fire', 'power', 'blood'], result: '피의 불꽃', effect: '공격력이 증가하고 지속 피해를 주며, 지속 피해 일부로 회복합니다.' },
-  { ingredients: ['fire', 'wall', 'blood'], result: '제물의 벽', effect: '적을 정지시키고 불태웁니다. 정지된 적이 죽으면 성 체력을 회복합니다.' },
-  { ingredients: ['bomb', 'ball', 'power'], result: '탄막', effect: '빠른 범위 공격을 합니다. 단일 피해는 낮지만 여러 적에게 강합니다.' },
-  { ingredients: ['bomb', 'ball', 'wall'], result: '충격파', effect: '빠른 공격으로 작은 범위 피해를 주고, 일정 확률로 적을 정지시킵니다.' },
-  { ingredients: ['bomb', 'ball', 'blood'], result: '피의 파편', effect: '범위 공격을 빠르게 하며, 맞은 적 수에 따라 성 체력을 회복합니다.' },
-  { ingredients: ['bomb', 'power', 'wall'], result: '대포', effect: '공격 속도는 느리지만 강한 범위 피해와 짧은 정지를 줍니다.' },
-  { ingredients: ['bomb', 'power', 'blood'], result: '흡혈폭탄', effect: '강한 범위 피해를 주고, 피해량 일부만큼 성 체력을 회복합니다.' },
-  { ingredients: ['bomb', 'wall', 'blood'], result: '피의 장벽', effect: '범위 안 적을 정지시키고, 정지한 적 수에 비례해 성 체력을 회복합니다.' },
-  { ingredients: ['ball', 'power', 'wall'], result: '파쇄', effect: '공격 속도와 공격력이 증가하지만, 일정 확률로 공격 후 잠시 과열됩니다. 적을 짧게 정지시킵니다.' },
-  { ingredients: ['ball', 'power', 'blood'], result: '사냥꾼', effect: '빠르고 강한 공격을 하며, 처치 시 성 체력을 회복합니다.' },
-  { ingredients: ['ball', 'wall', 'blood'], result: '흡착', effect: '빠르게 공격하며 적을 짧게 붙잡고, 붙잡힌 적에게 준 피해 일부를 회복합니다.' },
-  { ingredients: ['power', 'wall', 'blood'], result: '수호자', effect: '공격 속도는 느리지만 강한 피해, 정지, 회복을 동시에 가집니다.' },
-  { ingredients: ['빙결', '화산', '대포'], result: '빙화산포', effect: '매우 느리게 공격하지만, 넓은 범위에 강한 피해를 주고 적을 얼린 뒤 불태웁니다.' },
-  { ingredients: ['증기폭발', '생명의 늪', '대포'], result: '늪지포', effect: '범위 피해를 주고, 맞은 적을 둔화시킵니다. 둔화된 적이 많을수록 성 체력을 회복합니다.' },
-  { ingredients: ['연쇄폭발', '화산', '탄막'], result: '폭염탄막', effect: '빠르게 범위 공격을 하며, 불타는 적이 죽으면 주변에 연쇄 폭발을 일으킵니다.' },
-  { ingredients: ['감옥', '빙벽', '용암'], result: '절대감옥', effect: '적을 긴 시간 정지시키고, 정지된 적에게 지속 피해와 추가 피해를 줍니다. 공격 속도는 매우 느립니다.' },
-  { ingredients: ['광속', '사냥꾼', '칼날비'], result: '암살비', effect: '매우 빠르게 공격하며, 체력이 낮은 적에게 추가 피해를 줍니다. 처치 시 성 체력을 회복합니다.' },
-  { ingredients: ['핵폭발', '피폭발', '흡혈폭탄'], result: '혈핵', effect: '매우 넓은 범위에 큰 피해를 주고, 맞은 적 수에 비례해 성 체력을 회복합니다. 대신 공격 간격이 깁니다.' },
-  { ingredients: ['시간감옥', '화염사슬', '충격파'], result: '시간사슬', effect: '빠르게 공격하며 일정 확률로 적을 묶어 정지시킵니다. 정지된 적 주변에 충격파가 발생합니다.' },
-  { ingredients: ['지옥불', '피의 불꽃', '흡혈화염'], result: '혈염', effect: '강한 지속 피해를 주고, 지속 피해의 일부만큼 성 체력을 회복합니다. 같은 적을 오래 때릴수록 피해가 증가합니다.' },
-  { ingredients: ['해일', '홍수', '생명의 늪'], result: '심해', effect: '넓은 범위 적을 강하게 둔화시키고, 일정 확률로 뒤로 밀어냅니다. 범위 안 적이 많을수록 회복량이 증가합니다.' },
-  { ingredients: ['거인', '대포', '파쇄'], result: '파멸포', effect: '공격 속도는 매우 느리지만, 방어력이 높은 적에게 큰 추가 피해를 줍니다. 공격 시 짧은 정지를 적용합니다.' },
-  { ingredients: ['광전사', '탄막', '연쇄폭발'], result: '광란폭죽', effect: '공격 속도가 매우 빠르고, 일정 확률로 작은 폭발을 연속으로 일으킵니다. 낮은 확률로 적을 강화시킬 위험이 있습니다.' },
-  { ingredients: ['수호자', '생명의 늪', '피의 장벽'], result: '성역', effect: '공격력은 낮지만 적을 오래 붙잡고, 성 체력을 꾸준히 회복합니다. 방어형 최종 속성 느낌입니다.' },
-  { ingredients: ['빙결', '시간감옥', '감옥'], result: '영구동토', effect: '적을 자주 정지시키고 둔화시킵니다. 대신 피해량은 낮습니다.' },
-  { ingredients: ['화산', '지뢰장벽', '용암'], result: '마그마지대', effect: '공격한 위치에 잠시 마그마 장판을 남깁니다. 장판 위 적은 지속 피해를 받고 느려집니다.' },
-  { ingredients: ['물폭풍', '칼날비', '암살비'], result: '폭우검', effect: '빠르게 여러 번 공격하며, 둔화된 적에게 치명타 확률이 증가합니다.' },
-  { ingredients: ['흡혈귀', '사냥꾼', '혈염'], result: '포식자', effect: '적을 처치할 때마다 일시적으로 공격력과 회복량이 증가합니다.' },
-  { ingredients: ['핵폭발', '절대감옥', '혈핵'], result: '종말', effect: '아주 긴 쿨타임 후 화면 전체에 큰 피해를 주고, 살아남은 적을 잠시 정지시킵니다.' },
-  { ingredients: ['광속', '광전사', '광란폭죽'], result: '과부하', effect: '공격 속도가 극단적으로 빨라집니다. 일정 시간 공격 후 잠시 멈추며, 적 강화 확률이 존재합니다.' },
-  { ingredients: ['대포', '빙화산포', '파멸포'], result: '천공포', effect: '보스와 고체력 적에게 매우 강한 단일 폭발 피해를 줍니다. 주변 적에게는 약한 범위 피해를 줍니다.' },
-  { ingredients: ['성역', '수호자', '절대감옥'], result: '왕성수호', effect: '성 근처의 적을 강하게 정지시키고, 성 체력이 낮을수록 회복량과 정지 시간이 증가합니다.' }
+  { ingredients: ['water', 'water', 'water'], result: '빙결' },
+  { ingredients: ['fire', 'fire', 'fire'], result: '지옥불' },
+  { ingredients: ['bomb', 'bomb', 'bomb'], result: '핵폭발' },
+  { ingredients: ['ball', 'ball', 'ball'], result: '광속' },
+  { ingredients: ['power', 'power', 'power'], result: '거인' },
+  { ingredients: ['wall', 'wall', 'wall'], result: '감옥' },
+  { ingredients: ['blood', 'blood', 'blood'], result: '흡혈귀' },
+  { ingredients: ['water', 'fire', 'bomb'], result: '증기폭발' },
+  { ingredients: ['water', 'fire', 'power'], result: '열탕' },
+  { ingredients: ['water', 'fire', 'wall'], result: '냉각장벽' },
+  { ingredients: ['water', 'fire', 'blood'], result: '생명증기' },
+  { ingredients: ['water', 'bomb', 'ball'], result: '물폭풍' },
+  { ingredients: ['water', 'bomb', 'power'], result: '해일' },
+  { ingredients: ['water', 'bomb', 'wall'], result: '홍수' },
+  { ingredients: ['water', 'bomb', 'blood'], result: '흡수파도' },
+  { ingredients: ['water', 'ball', 'power'], result: '칼날비' },
+  { ingredients: ['water', 'ball', 'wall'], result: '시간감옥' },
+  { ingredients: ['water', 'ball', 'blood'], result: '피의 비' },
+  { ingredients: ['water', 'power', 'wall'], result: '빙벽' },
+  { ingredients: ['water', 'power', 'blood'], result: '냉혈' },
+  { ingredients: ['water', 'wall', 'blood'], result: '생명의 늪' },
+  { ingredients: ['fire', 'bomb', 'ball'], result: '연쇄폭발' },
+  { ingredients: ['fire', 'bomb', 'power'], result: '화산' },
+  { ingredients: ['fire', 'bomb', 'wall'], result: '지뢰장벽' },
+  { ingredients: ['fire', 'bomb', 'blood'], result: '피폭발' },
+  { ingredients: ['fire', 'ball', 'power'], result: '광전사' },
+  { ingredients: ['fire', 'ball', 'wall'], result: '화염사슬' },
+  { ingredients: ['fire', 'ball', 'blood'], result: '흡혈화염' },
+  { ingredients: ['fire', 'power', 'wall'], result: '용암' },
+  { ingredients: ['fire', 'power', 'blood'], result: '피의 불꽃' },
+  { ingredients: ['fire', 'wall', 'blood'], result: '제물의 벽' },
+  { ingredients: ['bomb', 'ball', 'power'], result: '탄막' },
+  { ingredients: ['bomb', 'ball', 'wall'], result: '충격파' },
+  { ingredients: ['bomb', 'ball', 'blood'], result: '피의 파편' },
+  { ingredients: ['bomb', 'power', 'wall'], result: '대포' },
+  { ingredients: ['bomb', 'power', 'blood'], result: '흡혈폭탄' },
+  { ingredients: ['bomb', 'wall', 'blood'], result: '피의 장벽' },
+  { ingredients: ['ball', 'power', 'wall'], result: '파쇄' },
+  { ingredients: ['ball', 'power', 'blood'], result: '사냥꾼' },
+  { ingredients: ['ball', 'wall', 'blood'], result: '흡착' },
+  { ingredients: ['power', 'wall', 'blood'], result: '수호자' },
+  { ingredients: ['빙결', '화산', '대포'], result: '빙화산포' },
+  { ingredients: ['증기폭발', '생명의 늪', '대포'], result: '늪지포' },
+  { ingredients: ['연쇄폭발', '화산', '탄막'], result: '폭염탄막' },
+  { ingredients: ['감옥', '빙벽', '용암'], result: '절대감옥' },
+  { ingredients: ['광속', '사냥꾼', '칼날비'], result: '암살비' },
+  { ingredients: ['핵폭발', '피폭발', '흡혈폭탄'], result: '혈핵' },
+  { ingredients: ['시간감옥', '화염사슬', '충격파'], result: '시간사슬' },
+  { ingredients: ['지옥불', '피의 불꽃', '흡혈화염'], result: '혈염' },
+  { ingredients: ['해일', '홍수', '생명의 늪'], result: '심해' },
+  { ingredients: ['거인', '대포', '파쇄'], result: '파멸포' },
+  { ingredients: ['광전사', '탄막', '연쇄폭발'], result: '광란폭죽' },
+  { ingredients: ['수호자', '생명의 늪', '피의 장벽'], result: '성역' },
+  { ingredients: ['빙결', '시간감옥', '감옥'], result: '영구동토' },
+  { ingredients: ['화산', '지뢰장벽', '용암'], result: '마그마지대' },
+  { ingredients: ['물폭풍', '칼날비', '암살비'], result: '폭우검' },
+  { ingredients: ['흡혈귀', '사냥꾼', '혈염'], result: '포식자' },
+  { ingredients: ['핵폭발', '절대감옥', '혈핵'], result: '종말' },
+  { ingredients: ['광속', '광전사', '광란폭죽'], result: '과부하' },
+  { ingredients: ['대포', '빙화산포', '파멸포'], result: '천공포' },
+  { ingredients: ['성역', '수호자', '절대감옥'], result: '왕성수호' }
 ];
 
 function findFusionRecipe(ingredients) {
@@ -87,7 +87,7 @@ function getRecipeBookHtml(recipe) {
   return `
     <p class="recipe-book-name">${recipe.result} 조합서</p>
     <p class="recipe-book-ingredients">${recipe.ingredients.map(getAttributeText).join(' + ')}</p>
-    <p class="recipe-book-effect">${recipe.effect}</p>
+    <p class="recipe-book-effect">${getAttributeEffectDescription(recipe.result)}</p>
   `;
 }
 
@@ -142,22 +142,6 @@ function getOrbChipHtml(entry) {
   `;
 }
 
-const ATTRIBUTE_EFFECT_TEXT = {
-  water: '공격 시 적의 이동 속도를 3초간 50% 감소시킵니다.',
-  fire: '공격 시 1초마다 공격력의 25%만큼 화상 피해를 3회(총 3초, 누적 75%) 입힙니다.',
-  bomb: '공격 시 반경 130 내 모든 적에게 공격력의 70%만큼 폭발 피해를 줍니다.',
-  ball: '공격 속도가 2배 빨라지지만, 타격 시 10% 확률로 적을 3성으로 강화시킵니다.',
-  power: '공격력이 2배가 됩니다.',
-  wall: '공격 속도가 절반으로 느려지지만, 공격 시 적을 3초간 완전히 정지시킵니다.',
-  blood: '공격력이 절반으로 줄어드는 대신, 준 피해의 10%만큼 성 체력을 회복합니다.'
-};
-
-function getAttributeEffectText(attribute) {
-  if (ATTRIBUTE_EFFECT_TEXT[attribute]) return ATTRIBUTE_EFFECT_TEXT[attribute];
-  const recipe = FUSION_RECIPES.find(item => item.result === attribute);
-  return recipe ? recipe.effect : '';
-}
-
 let orbTooltipEl = null;
 
 function ensureOrbTooltip() {
@@ -182,7 +166,7 @@ function positionOrbTooltip(x, y) {
 }
 
 function showOrbTooltip(attribute, x, y) {
-  const text = getAttributeEffectText(attribute);
+  const text = getAttributeEffectDescription(attribute);
   if (!text) {
     hideOrbTooltip();
     return;
@@ -368,7 +352,7 @@ function refreshBlacksmithModal() {
   const recipe = findFusionRecipe(forgeSlots);
   forgeResultEl.textContent = recipe ? getAttributeText(recipe.result) : '?';
   forgeResultEl.className = `forge-slot forge-result${recipe ? ` attribute-${getAttributeClass(recipe.result)}` : ''}`;
-  forgeEffectText.textContent = recipe ? recipe.effect : '';
+  forgeEffectText.textContent = recipe ? getAttributeEffectDescription(recipe.result) : '';
 
   forgeCombineBtn.disabled = !recipe || !hasEnoughOrbsForForge(recipe);
 }

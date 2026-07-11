@@ -186,9 +186,10 @@ function getEnemySlowMultiplier(enemyDiv) {
   const isSlowed = Date.now() < parseInt(enemyDiv.dataset.slowUntil || '0');
   if (!isSlowed) return 1;
 
+  const effectSlowMult = parseFloat(enemyDiv.dataset.slowMult || '0.5');
   if (attribute === 'golem') return 0.75;
   if (attribute === 'ice') return 0.8;
-  return 0.5;
+  return Number.isFinite(effectSlowMult) ? effectSlowMult : 0.5;
 }
 
 function maybeTeleportEnemy(enemyDiv, dx, dy, dist) {
