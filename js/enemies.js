@@ -110,7 +110,7 @@ function getEnemyHtml(enemy) {
   `;
 }
 
-function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar) {
+function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar, options = {}) {
   if (isGamePaused) return null;
 
   let lv = forcedLv;
@@ -134,8 +134,8 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar) {
   div.draggable = true;
   enemy.element = div;
   div.style.position = 'absolute';
-  div.style.left = '90vw';
-  div.style.top = `${Math.floor(Math.random()*70)}vh`;
+  div.style.left = options.left !== undefined ? `${options.left}px` : '90vw';
+  div.style.top = options.top !== undefined ? `${options.top}px` : `${Math.floor(Math.random()*70)}vh`;
 
   div.dataset.id = enemy.id;
   div.dataset.lv = enemy.lv;
@@ -145,6 +145,7 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar) {
   div.dataset.castleDamage = enemy.castleDamage;
   div.dataset.lastCastleAttack = '0';
   div.dataset.lastTeleport = '0';
+  div.dataset.lastSummonAt = div.dataset.lastSummonAt || `${Date.now()}`;
 
   board.appendChild(div);
   makeDraggable(div);
@@ -162,6 +163,48 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar) {
   }
 
   return enemy;
+}
+
+function getRandomSummonedEnemyLevel(parentLv) {
+  return Math.max(1, parentLv - (Math.floor(Math.random() * 3) + 1));
+}
+
+function getRandomPositionNearEnemy(enemyDiv) {
+  const angle = Math.random() * Math.PI * 2;
+  const distance = Math.sqrt(Math.random()) * ENEMY_SUMMON_RADIUS;
+  const left = enemyDiv.offsetLeft + Math.cos(angle) * distance;
+  const top = enemyDiv.offsetTop + Math.sin(angle) * distance;
+  const maxLeft = Math.max(0, board.clientWidth - enemyDiv.offsetWidth);
+  const maxTop = Math.max(0, board.clientHeight - enemyDiv.offsetHeight);
+
+  return {
+    left: Math.max(0, Math.min(maxLeft, left)),
+    top: Math.max(0, Math.min(maxTop, top))
+  };
+}
+
+function summonEnemyNearParent(parentEnemy) {
+  if (!parentEnemy?.element || !document.body.contains(parentEnemy.element)) return;
+
+  const childLv = getRandomSummonedEnemyLevel(parentEnemy.lv);
+  const position = getRandomPositionNearEnemy(parentEnemy.element);
+  spawnEnemy(undefined, childLv, undefined, undefined, position);
+}
+
+function enemySummonLoop() {
+  if (isGamePaused || !isTeamSimulationAuthority()) return;
+
+  const now = Date.now();
+  enemies.forEach(enemy => {
+    if (!enemy.element || !document.body.contains(enemy.element)) return;
+    if (enemy.lv % 7 !== 0) return;
+
+    const lastSummonAt = parseInt(enemy.element.dataset.lastSummonAt || '0', 10);
+    if (now - lastSummonAt < ENEMY_SUMMON_INTERVAL / gameSpeed) return;
+
+    enemy.element.dataset.lastSummonAt = `${now}`;
+    summonEnemyNearParent(enemy);
+  });
 }
 
 function getEnemyByElement(enemyDiv) {
