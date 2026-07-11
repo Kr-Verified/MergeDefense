@@ -47,6 +47,7 @@ function getCurrentUpgradeLevel(key) {
   if (key === 'towerSpeed') return parseInt(selectedTower.dataset.speedUpgrade || '0');
   if (key === 'towerPower') return parseInt(selectedTower.dataset.powerUpgrade || '0');
   if (key === 'towerRange') return parseInt(selectedTower.dataset.rangeUpgrade || '0');
+  if (key === 'towerHp') return parseInt(selectedTower.dataset.hpUpgrade || '0');
   return 0;
 }
 
@@ -86,6 +87,8 @@ function getSelectedUpgradeCount(key) {
 
 function getRemainingUpgradeCount(key) {
   if (key === 'criticalChance') return Math.max(0, 90 - criticalChanceUpgrade);
+  if (key === 'globalSpeed') return Math.max(0, getMaxUsefulGlobalSpeedUpgradeLevel() - globalSpeedUpgrade);
+  if (key === 'towerSpeed') return Math.max(0, getMaxUsefulTowerSpeedUpgradeLevel(selectedTower) - getCurrentUpgradeLevel(key));
   return Infinity;
 }
 
@@ -94,6 +97,7 @@ function getSelectedUpgradeCost(key) {
 }
 
 function getUpgradeAmountLabel(key) {
+  if (getRemainingUpgradeCount(key) <= 0) return '최대';
   const amount = selectedUpgradeAmounts[key] || '1';
   if (amount !== 'max') return `x${amount}`;
   return `max x${getMaxAffordableUpgradeCount(key)}`;
@@ -157,6 +161,15 @@ function refreshGlobalUpgradeButtons() {
   refreshUpgradeAmountControls();
 }
 
+function getMaxUsefulGlobalSpeedUpgradeLevel() {
+  return Math.max(0, Math.floor((BASE_ATTACK_INTERVAL - MIN_ATTACK_INTERVAL) / GLOBAL_SPEED_UPGRADE_STEP));
+}
+
+function getMaxUsefulTowerSpeedUpgradeLevel(tower) {
+  if (!tower) return 0;
+  return Math.max(0, Math.floor((BASE_ATTACK_INTERVAL - MIN_ATTACK_INTERVAL - globalSpeedUpgrade * GLOBAL_SPEED_UPGRADE_STEP) / TOWER_SPEED_UPGRADE_STEP));
+}
+
 function openUpgradeModal(tower) {
   if (isSpectatorMode()) return;
   if (!board.contains(tower)) return;
@@ -216,27 +229,34 @@ function refreshUpgradeModal() {
   const speedCost = getSelectedUpgradeCost('towerSpeed');
   const powerCost = getSelectedUpgradeCost('towerPower');
   const rangeCost = getSelectedUpgradeCost('towerRange');
+  const hpCost = getSelectedUpgradeCost('towerHp');
   const timeSpeedCount = getSelectedTimeUpgradeCount('speed');
   const timePowerCount = getSelectedTimeUpgradeCount('power');
   const timeRangeCount = getSelectedTimeUpgradeCount('range');
+  const timeHpCount = getSelectedTimeUpgradeCount('hp');
   const timeSpeedCost = getTimeUpgradeCostForCount(selectedTower, 'speed', timeSpeedCount);
   const timePowerCost = getTimeUpgradeCostForCount(selectedTower, 'power', timePowerCount);
   const timeRangeCost = getTimeUpgradeCostForCount(selectedTower, 'range', timeRangeCount);
+  const timeHpCost = getTimeUpgradeCostForCount(selectedTower, 'hp', timeHpCount);
   const starUpgradeCost = getTowerStarUpgradeCost(selectedTower);
 
   upgradeSpeedBtn.textContent = `공격 속도 향상 ${getUpgradeAmountLabel('towerSpeed')} ${speedCost} $`;
   upgradePowerBtn.textContent = `공격 힘 향상 ${getUpgradeAmountLabel('towerPower')} ${powerCost} $`;
   upgradeRangeBtn.textContent = `공격 범위 향상 ${getUpgradeAmountLabel('towerRange')} ${rangeCost} $`;
+  upgradeHpBtn.textContent = `최대 체력 향상 ${getUpgradeAmountLabel('towerHp')} ${hpCost} $`;
   timeUpgradeSpeedBtn.textContent = `타임 속도 향상 ${getTimeUpgradeAmountLabel('speed')} ${timeSpeedCost} T`;
   timeUpgradePowerBtn.textContent = `타임 힘 향상 ${getTimeUpgradeAmountLabel('power')} ${timePowerCost} T`;
   timeUpgradeRangeBtn.textContent = `타임 범위 향상 ${getTimeUpgradeAmountLabel('range')} ${timeRangeCost} T`;
+  timeUpgradeHpBtn.textContent = `타임 체력 향상 ${getTimeUpgradeAmountLabel('hp')} ${timeHpCost} T`;
   timeUpgradeStarBtn.textContent = getTowerStarUpgradeText(selectedTower);
   upgradeSpeedBtn.disabled = getSelectedUpgradeCount('towerSpeed') < 1 || coins < speedCost;
   upgradePowerBtn.disabled = getSelectedUpgradeCount('towerPower') < 1 || coins < powerCost;
   upgradeRangeBtn.disabled = getSelectedUpgradeCount('towerRange') < 1 || coins < rangeCost;
+  upgradeHpBtn.disabled = getSelectedUpgradeCount('towerHp') < 1 || coins < hpCost;
   timeUpgradeSpeedBtn.disabled = timeSpeedCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeSpeedCost;
   timeUpgradePowerBtn.disabled = timePowerCount < 1 || parseInt(selectedTower.dataset.time || '0') < timePowerCost;
   timeUpgradeRangeBtn.disabled = timeRangeCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeRangeCost;
+  timeUpgradeHpBtn.disabled = timeHpCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeHpCost;
   timeUpgradeStarBtn.disabled = starUpgradeCost === null || parseInt(selectedTower.dataset.time || '0') < starUpgradeCost;
   refreshGlobalUpgradeButtons();
 }
@@ -249,14 +269,15 @@ function getUpgradeTypeFromKey(key) {
   if (key === 'towerSpeed') return 'speed';
   if (key === 'towerPower') return 'power';
   if (key === 'towerRange') return 'range';
+  if (key === 'towerHp') return 'hp';
   return '';
 }
 
 function getSelectedTimeUpgradeCount(type) {
-  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : type === 'range' ? 'towerRange' : 'towerHp';
   const amount = selectedUpgradeAmounts[amountKey] || '1';
   if (amount === 'max') return getMaxAffordableTimeUpgradeCount(type);
-  return parseInt(amount);
+  return Math.min(parseInt(amount), getRemainingTimeUpgradeCount(type));
 }
 
 function getTimeUpgradeCostForCount(tower, type, count) {
@@ -279,6 +300,7 @@ function getMaxAffordableTimeUpgradeCount(type) {
   const currentLevel = parseInt(selectedTower.dataset[`${type}Upgrade`] || '0');
 
   while (count < 10000) {
+    if (count >= getRemainingTimeUpgradeCount(type)) break;
     const nextCost = currentLevel + count + 1;
     if (totalCost + nextCost > currentTime) break;
     totalCost += nextCost;
@@ -289,10 +311,17 @@ function getMaxAffordableTimeUpgradeCount(type) {
 }
 
 function getTimeUpgradeAmountLabel(type) {
-  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  if (getRemainingTimeUpgradeCount(type) <= 0) return '최대';
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : type === 'range' ? 'towerRange' : 'towerHp';
   const amount = selectedUpgradeAmounts[amountKey] || '1';
   if (amount !== 'max') return `x${amount}`;
   return `max x${getMaxAffordableTimeUpgradeCount(type)}`;
+}
+
+function getRemainingTimeUpgradeCount(type) {
+  if (!selectedTower) return 0;
+  if (type !== 'speed') return Infinity;
+  return Math.max(0, getMaxUsefulTowerSpeedUpgradeLevel(selectedTower) - parseInt(selectedTower.dataset.speedUpgrade || '0'));
 }
 
 function getTowerStarUpgradeCost(tower) {
@@ -329,15 +358,17 @@ function upgradeSelectedTower(type) {
   if (isSpectatorMode()) return;
   if (!selectedTower || !document.body.contains(selectedTower)) return;
 
-  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : 'towerRange';
+  const amountKey = type === 'speed' ? 'towerSpeed' : type === 'power' ? 'towerPower' : type === 'range' ? 'towerRange' : 'towerHp';
   const count = getSelectedUpgradeCount(amountKey);
   const cost = getSelectedUpgradeCost(amountKey);
   if (count < 1) return;
   if (coins < cost) return;
 
   coins -= cost;
+  const oldMaxHp = getTowerMaxHp(selectedTower);
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
+  if (type === 'hp') applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   refreshUpgradeUi();
   reportTeamSharedState();
 }
@@ -353,8 +384,10 @@ function upgradeSelectedTowerWithTime(type) {
   if (currentTime < cost) return;
 
   selectedTower.dataset.time = `${currentTime - cost}`;
+  const oldMaxHp = getTowerMaxHp(selectedTower);
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
+  if (type === 'hp') applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   refreshUpgradeUi();
   reportTeamSharedState();
 }

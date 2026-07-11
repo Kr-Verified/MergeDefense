@@ -58,7 +58,8 @@ function getAttributeClass(attribute) {
 function getTowerUpgradeTotal(tower) {
   return parseInt(tower.dataset.speedUpgrade || '0') +
     parseInt(tower.dataset.powerUpgrade || '0') +
-    parseInt(tower.dataset.rangeUpgrade || '0');
+    parseInt(tower.dataset.rangeUpgrade || '0') +
+    parseInt(tower.dataset.hpUpgrade || '0');
 }
 
 function getTowerHtml(lv, star, attribute = 'none') {
@@ -89,8 +90,9 @@ function setTowerAttribute(tower, attribute) {
 function getTowerMaxHp(tower) {
   const lv = parseInt(tower.dataset.lv);
   const star = parseInt(tower.dataset.star || '1');
+  const hpUpgrade = parseInt(tower.dataset.hpUpgrade || '0');
   const baseMaxHp = lv * 50 * getTowerStarDamageMultiplier(star);
-  return Math.max(1, Math.floor(baseMaxHp * (1 + getEquipmentBonus(tower, 'maxHp'))));
+  return Math.max(1, Math.floor(baseMaxHp * (1 + hpUpgrade * TOWER_HP_UPGRADE_MULTIPLIER + getEquipmentBonus(tower, 'maxHp'))));
 }
 
 function applyTowerMaxHpDelta(tower, oldMaxHp) {
@@ -149,6 +151,7 @@ function setDefaultTowerStats(tower) {
   tower.dataset.speedUpgrade = tower.dataset.speedUpgrade || '0';
   tower.dataset.powerUpgrade = tower.dataset.powerUpgrade || '0';
   tower.dataset.rangeUpgrade = tower.dataset.rangeUpgrade || '0';
+  tower.dataset.hpUpgrade = tower.dataset.hpUpgrade || '0';
   tower.dataset.lastAttack = tower.dataset.lastAttack || '0';
   tower.dataset.equipment = tower.dataset.equipment || '[null,null,null]';
   tower.dataset.time = tower.dataset.time || '0';
@@ -168,6 +171,7 @@ function copyTowerStats(fromTower, toTower) {
   toTower.dataset.speedUpgrade = fromTower.dataset.speedUpgrade || '0';
   toTower.dataset.powerUpgrade = fromTower.dataset.powerUpgrade || '0';
   toTower.dataset.rangeUpgrade = fromTower.dataset.rangeUpgrade || '0';
+  toTower.dataset.hpUpgrade = fromTower.dataset.hpUpgrade || '0';
   toTower.dataset.lastAttack = fromTower.dataset.lastAttack || '0';
   toTower.dataset.equipment = fromTower.dataset.equipment || '[null,null,null]';
   toTower.dataset.time = fromTower.dataset.time || '0';
@@ -198,7 +202,7 @@ function getTowerAttackInterval(tower) {
   const starMultiplier = parseInt(tower.dataset.star || '1') === 5 ? 1 / 1.5 : 1;
   const equipmentMultiplier = Math.max(0.1, 1 - getEquipmentBonus(tower, 'speed'));
   if (gameSpeed === 0) return Infinity;
-  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * 120 - globalSpeedUpgrade * 80) * attributeMultiplier * starMultiplier * equipmentMultiplier / gameSpeed;
+  return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * TOWER_SPEED_UPGRADE_STEP - globalSpeedUpgrade * GLOBAL_SPEED_UPGRADE_STEP) * attributeMultiplier * starMultiplier * equipmentMultiplier / gameSpeed;
 }
 
 function getBombRange(tower) {

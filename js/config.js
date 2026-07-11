@@ -24,9 +24,11 @@ const towerTimeText = document.getElementById('tower-time');
 const upgradeSpeedBtn = document.getElementById('upgrade-speed-btn');
 const upgradePowerBtn = document.getElementById('upgrade-power-btn');
 const upgradeRangeBtn = document.getElementById('upgrade-range-btn');
+const upgradeHpBtn = document.getElementById('upgrade-hp-btn');
 const timeUpgradeSpeedBtn = document.getElementById('time-upgrade-speed-btn');
 const timeUpgradePowerBtn = document.getElementById('time-upgrade-power-btn');
 const timeUpgradeRangeBtn = document.getElementById('time-upgrade-range-btn');
+const timeUpgradeHpBtn = document.getElementById('time-upgrade-hp-btn');
 const timeUpgradeStarBtn = document.getElementById('time-upgrade-star-btn');
 const towerCountBar = document.getElementById('tower-count');
 const globalSpeedBtn = document.getElementById('global-speed-btn');
@@ -99,7 +101,8 @@ const selectedUpgradeAmounts = {
   towerLimit: '1',
   towerSpeed: '1',
   towerPower: '1',
-  towerRange: '1'
+  towerRange: '1',
+  towerHp: '1'
 };
 let health = 1000;
 let maxHealth = 1000;
@@ -120,7 +123,9 @@ let survivalTimerInterval = null;
 let towerTimeInterval = null;
 let bossRecoverInterval = null;
 let enemyTowerCombatInterval = null;
+let enemySpawnSlowTimeout = null;
 let survivedSeconds = 0;
+let enemySpawnSlowUntil = 0;
 const enemies = [];
 const spawnedLimitedEnemyLevels = new Set();
 document.getElementById('name').textContent = `${localStorage.getItem('name')}`;
@@ -141,6 +146,12 @@ const TOWER_STAR_UPGRADE_COSTS = {
 const EQUIPMENT_SLOT_UNLOCK_LEVELS = [0, 10, 100];
 const DEFAULT_TARGET_PRIORITY = 'nearest';
 const TARGET_PRIORITIES = ['nearest', 'highestHp', 'lowestHp'];
+const ENEMY_SPAWN_BASE_INTERVAL = 2500;
+const ENEMY_SPAWN_SLOW_DURATION = 10000;
+const ENEMY_SPAWN_SLOW_MULTIPLIER = 2;
+const TOWER_SPEED_UPGRADE_STEP = 120;
+const GLOBAL_SPEED_UPGRADE_STEP = 80;
+const TOWER_HP_UPGRADE_MULTIPLIER = 0.2;
 const TOWER_MELEE_RANGE = 90;
 const ENEMY_TOWER_ATTACK_INTERVAL = 1000;
 const BOSS_AOE_RANGE = 220;

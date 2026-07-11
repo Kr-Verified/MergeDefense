@@ -6,7 +6,14 @@ function castFrostWave() {
   [...enemies].forEach(enemy => {
     if (!document.body.contains(enemy.element)) return;
     enemy.element.dataset.slowUntil = `${Date.now() + getEnemyControlDuration(enemy, 4000, 'slow')}`;
+    enemy.element.dataset.slowMult = '0.5';
   });
+}
+
+function castSpawnSlow() {
+  enemySpawnSlowUntil = Math.max(enemySpawnSlowUntil, Date.now() + ENEMY_SPAWN_SLOW_DURATION);
+  resetGameIntervals();
+  reportTeamSharedState();
 }
 
 function castGoldRush() {
@@ -30,9 +37,10 @@ const SKILLS = {
   barrage: { name: '포격', cooldown: 20000, cast: castBarrage },
   frost: { name: '빙결파', cooldown: 15000, cast: castFrostWave },
   goldRush: { name: '골드러시', cooldown: 25000, cast: castGoldRush },
-  repair: { name: '응급 수리', cooldown: 30000, cast: castFieldRepair }
+  repair: { name: '응급 수리', cooldown: 30000, cast: castFieldRepair },
+  spawnSlow: { name: '소환 지연', cooldown: 45000, cast: castSpawnSlow }
 };
-const skillLastUsed = { barrage: Date.now(), frost: Date.now(), goldRush: Date.now(), repair: Date.now() };
+const skillLastUsed = { barrage: Date.now(), frost: Date.now(), goldRush: Date.now(), repair: Date.now(), spawnSlow: Date.now() };
 
 function useSkill(key) {
   if (isSpectatorMode()) return;
@@ -42,7 +50,7 @@ function useSkill(key) {
   if (!skill) return;
 
   const now = Date.now();
-  const cooldown = skill.cooldown / gameSpeed;
+  const cooldown = skill.cooldown;
   if (now - skillLastUsed[key] < cooldown) return;
 
   skillLastUsed[key] = now;
@@ -68,7 +76,7 @@ function refreshSkillBar() {
     const skill = SKILLS[key];
     if (!skill) return;
 
-    const cooldown = skill.cooldown / gameSpeed;
+    const cooldown = skill.cooldown;
     const remaining = Math.max(0, cooldown - (now - skillLastUsed[key]));
     const ready = remaining <= 0;
 

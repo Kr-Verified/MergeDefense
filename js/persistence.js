@@ -72,6 +72,7 @@ function serializeGameState() {
       towerLimit,
       gameSpeed,
       survivedSeconds,
+      enemySpawnSlowUntil,
       towerId,
       enemyId,
       equipmentId,
@@ -214,6 +215,7 @@ function applyGameState(state) {
   towerLimit = globals.towerLimit ?? towerLimit;
   gameSpeed = globals.gameSpeed ?? gameSpeed;
   survivedSeconds = globals.survivedSeconds ?? survivedSeconds;
+  enemySpawnSlowUntil = globals.enemySpawnSlowUntil ?? enemySpawnSlowUntil;
   towerId = globals.towerId ?? towerId;
   enemyId = globals.enemyId ?? enemyId;
   equipmentId = globals.equipmentId ?? equipmentId;

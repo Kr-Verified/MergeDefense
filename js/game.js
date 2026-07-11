@@ -136,6 +136,11 @@ function updateSpeedModeButton() {
   speedModeBtn.classList.toggle('active', gameSpeed !== 1);
 }
 
+function getEnemySpawnIntervalMs() {
+  const slowMultiplier = Date.now() < enemySpawnSlowUntil ? ENEMY_SPAWN_SLOW_MULTIPLIER : 1;
+  return ENEMY_SPAWN_BASE_INTERVAL * slowMultiplier / gameSpeed;
+}
+
 function resetGameIntervals() {
   if (enemySpawnInterval) clearInterval(enemySpawnInterval);
   if (towerAttackInterval) clearInterval(towerAttackInterval);
@@ -144,12 +149,16 @@ function resetGameIntervals() {
   if (towerTimeInterval) clearInterval(towerTimeInterval);
   if (bossRecoverInterval) clearInterval(bossRecoverInterval);
   if (enemyTowerCombatInterval) clearInterval(enemyTowerCombatInterval);
+  if (enemySpawnSlowTimeout) clearTimeout(enemySpawnSlowTimeout);
   updateGamePausedState();
   if (gameSpeed === 0) return;
 
   const isWaveAuthority = isTeamSimulationAuthority();
 
-  enemySpawnInterval = isWaveAuthority ? setInterval(spawnEnemy, 5000 / gameSpeed) : null;
+  enemySpawnInterval = isWaveAuthority ? setInterval(spawnEnemy, getEnemySpawnIntervalMs()) : null;
+  if (Date.now() < enemySpawnSlowUntil) {
+    enemySpawnSlowTimeout = setTimeout(resetGameIntervals, Math.max(0, enemySpawnSlowUntil - Date.now()));
+  }
   towerAttackInterval = isWaveAuthority ? setInterval(towerAttackLoop, 100 / gameSpeed) : null;
   castleRecoverInterval = isWaveAuthority ? setInterval(recoverCastleHealth, 1000 / gameSpeed) : null;
   towerTimeInterval = isWaveAuthority ? setInterval(towerTimeLoop, 1000 / gameSpeed) : null;
@@ -201,9 +210,11 @@ board.addEventListener('click', closeUpgradeModal);
 upgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTower('speed'));
 upgradePowerBtn.addEventListener('click', () => upgradeSelectedTower('power'));
 upgradeRangeBtn.addEventListener('click', () => upgradeSelectedTower('range'));
+upgradeHpBtn.addEventListener('click', () => upgradeSelectedTower('hp'));
 timeUpgradeSpeedBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('speed'));
 timeUpgradePowerBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('power'));
 timeUpgradeRangeBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('range'));
+timeUpgradeHpBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('hp'));
 timeUpgradeStarBtn.addEventListener('click', upgradeSelectedTowerStarWithTime);
 globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
 globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
@@ -322,6 +333,7 @@ setupUpgradeAmountControls(towerLimitBtn, 'towerLimit');
 setupUpgradeAmountControls(upgradeSpeedBtn, 'towerSpeed');
 setupUpgradeAmountControls(upgradePowerBtn, 'towerPower');
 setupUpgradeAmountControls(upgradeRangeBtn, 'towerRange');
+setupUpgradeAmountControls(upgradeHpBtn, 'towerHp');
 startGameAutosave();
 applySpectatorMode();
 updateHealthText();
