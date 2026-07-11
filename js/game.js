@@ -194,6 +194,7 @@ function resetGameIntervals() {
   if (towerTimeInterval) clearInterval(towerTimeInterval);
   if (bossRecoverInterval) clearInterval(bossRecoverInterval);
   if (enemyTowerCombatInterval) clearInterval(enemyTowerCombatInterval);
+  if (enemySummonInterval) clearInterval(enemySummonInterval);
   if (enemySpawnSlowTimeout) clearTimeout(enemySpawnSlowTimeout);
   updateGamePausedState();
   if (gameSpeed === 0) return;
@@ -209,6 +210,7 @@ function resetGameIntervals() {
   towerTimeInterval = isWaveAuthority ? setInterval(towerTimeLoop, 1000 / gameSpeed) : null;
   bossRecoverInterval = isWaveAuthority ? setInterval(bossRecoverLoop, 1000 / gameSpeed) : null;
   enemyTowerCombatInterval = isWaveAuthority ? setInterval(enemyTowerCombatLoop, 200 / gameSpeed) : null;
+  enemySummonInterval = isWaveAuthority ? setInterval(enemySummonLoop, 250 / gameSpeed) : null;
   survivalTimerInterval = setInterval(() => {
     if (isGamePaused) return;
 

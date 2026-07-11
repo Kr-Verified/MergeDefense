@@ -46,7 +46,14 @@
     session.channel.send({
       type: 'broadcast',
       event: 'enemy-spawn',
-      payload: { id: enemy.id, lv: enemy.lv, star: enemy.star, attribute: enemy.attribute }
+      payload: {
+        id: enemy.id,
+        lv: enemy.lv,
+        star: enemy.star,
+        attribute: enemy.attribute,
+        left: enemy.element?.offsetLeft,
+        top: enemy.element?.offsetTop
+      }
     });
   };
 
@@ -352,7 +359,10 @@
     });
 
     channel.on('broadcast', { event: 'enemy-spawn' }, ({ payload }) => {
-      if (!session.isHost) spawnEnemy(payload.id, payload.lv, payload.attribute, payload.star);
+      if (!session.isHost) spawnEnemy(payload.id, payload.lv, payload.attribute, payload.star, {
+        left: payload.left,
+        top: payload.top
+      });
     });
 
     channel.on('broadcast', { event: 'enemy-hit' }, ({ payload }) => {

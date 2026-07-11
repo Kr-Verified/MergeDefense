@@ -263,8 +263,9 @@ function promoteEnemyToThreeStar(enemy) {
   if (enemy.star >= 3 || !document.body.contains(enemy.element)) return;
 
   const attributeHpMultiplier = getEnemyAttributeMaxHpMultiplier(enemy.attribute);
-  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star) * attributeHpMultiplier;
-  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3) * attributeHpMultiplier;
+  const levelHpMultiplier = getEnemyLevelHealthMultiplier(enemy.lv);
+  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star) * attributeHpMultiplier * levelHpMultiplier;
+  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3) * attributeHpMultiplier * levelHpMultiplier;
 
   enemy.star = 3;
   enemy.hp += newMaxHp - oldMaxHp;
@@ -365,6 +366,7 @@ function bossRecoverLoop() {
     let healAmount = 0;
     if (enemy.lv%5==0) healAmount += enemy.maxHp * 0.01;
     if (enemy.attribute === 'regen') healAmount += enemy.maxHp * 0.006;
+    healAmount *= getEnemyLevelHealMultiplier(enemy.lv);
     if (Date.now() < parseInt(enemy.element.dataset.regenSuppressedUntil || '0', 10)) return;
     if (healAmount <= 0) return;
 

@@ -17,9 +17,25 @@ function getEnemyStarHealthMultiplier(star) {
   return getEnemyStarDamageMultiplier(star);
 }
 
+function isEmpoweredEnemyLevel(lv) {
+  return parseInt(lv, 10) % 11 === 0;
+}
+
+function getEnemyLevelHealthMultiplier(lv) {
+  return isEmpoweredEnemyLevel(lv) ? 0.5 : 1;
+}
+
+function getEnemyLevelDamageMultiplier(lv) {
+  return isEmpoweredEnemyLevel(lv) ? 2 : 1;
+}
+
+function getEnemyLevelHealMultiplier(lv) {
+  return isEmpoweredEnemyLevel(lv) ? 4 : 1;
+}
+
 function getEnemyCastleDamage(lv, star) {
   const bossMultiplier = lv%5==0 ? 10 : 1;
-  return lv * getEnemyStarDamageMultiplier(star) * bossMultiplier;
+  return lv * getEnemyStarDamageMultiplier(star) * bossMultiplier * getEnemyLevelDamageMultiplier(lv);
 }
 
 function getEnemyAttributeText(attribute) {
@@ -74,6 +90,7 @@ function createEnemy(lv, star = getRandomEnemyStar(), attribute = getRandomEnemy
   let hp = getBaseEnemyHp(lv);
   hp *= getEnemyStarHealthMultiplier(star);
   hp *= getEnemyAttributeMaxHpMultiplier(attribute);
+  hp *= getEnemyLevelHealthMultiplier(lv);
   return {
     id: enemyId++,
     lv: lv,
@@ -134,8 +151,10 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar, options = {
   div.draggable = true;
   enemy.element = div;
   div.style.position = 'absolute';
-  div.style.left = options.left !== undefined ? `${options.left}px` : '90vw';
-  div.style.top = options.top !== undefined ? `${options.top}px` : `${Math.floor(Math.random()*70)}vh`;
+  const spawnLeft = Number(options.left);
+  const spawnTop = Number(options.top);
+  div.style.left = Number.isFinite(spawnLeft) ? `${spawnLeft}px` : '90vw';
+  div.style.top = Number.isFinite(spawnTop) ? `${spawnTop}px` : `${Math.floor(Math.random()*70)}vh`;
 
   div.dataset.id = enemy.id;
   div.dataset.lv = enemy.lv;
@@ -276,7 +295,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       const castleDamage = parseInt(enemyDiv.dataset.castleDamage || '1');
       health -= castleDamage;
       if (enemy?.attribute === 'vampire') {
-        enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.floor(enemy.maxHp * 0.12));
+        enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.floor(enemy.maxHp * 0.12 * getEnemyLevelHealMultiplier(enemy.lv)));
         enemy.element.innerHTML = getEnemyHtml(enemy);
       }
       if (window.TeamSession && window.TeamSession.isActive()) window.TeamSession.reportCastleHit(castleDamage);
