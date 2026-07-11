@@ -283,6 +283,27 @@ blacksmithOrbList.addEventListener('click', e => {
   if (!chip) return;
   assignForgeOrb(chip.dataset.attribute);
 });
+
+let hoveredOrbAttribute = null;
+blacksmithOrbList.addEventListener('mousemove', e => {
+  const chip = e.target.closest('.orb-chip');
+  if (!chip) {
+    hoveredOrbAttribute = null;
+    hideOrbTooltip();
+    return;
+  }
+
+  if (chip.dataset.attribute !== hoveredOrbAttribute) {
+    hoveredOrbAttribute = chip.dataset.attribute;
+    showOrbTooltip(hoveredOrbAttribute, e.clientX, e.clientY);
+  } else {
+    positionOrbTooltip(e.clientX, e.clientY);
+  }
+});
+blacksmithOrbList.addEventListener('mouseleave', () => {
+  hoveredOrbAttribute = null;
+  hideOrbTooltip();
+});
 forgeSlot0Btn.addEventListener('click', () => selectForgeSlot(0));
 forgeSlot1Btn.addEventListener('click', () => selectForgeSlot(1));
 forgeSlot2Btn.addEventListener('click', () => selectForgeSlot(2));

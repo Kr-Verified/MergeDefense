@@ -142,6 +142,62 @@ function getOrbChipHtml(entry) {
   `;
 }
 
+const ATTRIBUTE_EFFECT_TEXT = {
+  water: '공격 시 적의 이동 속도를 3초간 50% 감소시킵니다.',
+  fire: '공격 시 1초마다 공격력의 25%만큼 화상 피해를 3회(총 3초, 누적 75%) 입힙니다.',
+  bomb: '공격 시 반경 130 내 모든 적에게 공격력의 70%만큼 폭발 피해를 줍니다.',
+  ball: '공격 속도가 2배 빨라지지만, 타격 시 10% 확률로 적을 3성으로 강화시킵니다.',
+  power: '공격력이 2배가 됩니다.',
+  wall: '공격 속도가 절반으로 느려지지만, 공격 시 적을 3초간 완전히 정지시킵니다.',
+  blood: '공격력이 절반으로 줄어드는 대신, 준 피해의 10%만큼 성 체력을 회복합니다.'
+};
+
+function getAttributeEffectText(attribute) {
+  if (ATTRIBUTE_EFFECT_TEXT[attribute]) return ATTRIBUTE_EFFECT_TEXT[attribute];
+  const recipe = FUSION_RECIPES.find(item => item.result === attribute);
+  return recipe ? recipe.effect : '';
+}
+
+let orbTooltipEl = null;
+
+function ensureOrbTooltip() {
+  if (orbTooltipEl) return orbTooltipEl;
+  orbTooltipEl = document.createElement('div');
+  orbTooltipEl.id = 'orb-tooltip';
+  orbTooltipEl.classList.add('hidden');
+  document.body.appendChild(orbTooltipEl);
+  return orbTooltipEl;
+}
+
+function positionOrbTooltip(x, y) {
+  if (!orbTooltipEl || orbTooltipEl.classList.contains('hidden')) return;
+  const offset = 16;
+  const rect = orbTooltipEl.getBoundingClientRect();
+  let left = x + offset;
+  let top = y + offset;
+  if (left + rect.width > window.innerWidth) left = x - rect.width - offset;
+  if (top + rect.height > window.innerHeight) top = y - rect.height - offset;
+  orbTooltipEl.style.left = `${Math.max(0, left)}px`;
+  orbTooltipEl.style.top = `${Math.max(0, top)}px`;
+}
+
+function showOrbTooltip(attribute, x, y) {
+  const text = getAttributeEffectText(attribute);
+  if (!text) {
+    hideOrbTooltip();
+    return;
+  }
+
+  const tooltip = ensureOrbTooltip();
+  tooltip.textContent = text;
+  tooltip.classList.remove('hidden');
+  positionOrbTooltip(x, y);
+}
+
+function hideOrbTooltip() {
+  if (orbTooltipEl) orbTooltipEl.classList.add('hidden');
+}
+
 function openTowerActionPopup(tower) {
   if (isSpectatorMode()) return;
   waitingTowerActionTarget = tower;
@@ -294,6 +350,7 @@ function openBlacksmithModal() {
 
 function closeBlacksmithModal() {
   blacksmithModal.classList.add('hidden');
+  hideOrbTooltip();
   forgeSlots = [null, null, null];
   forgeActiveSlot = null;
 }
