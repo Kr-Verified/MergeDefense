@@ -132,7 +132,7 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar, options = {
 
   let lv = forcedLv;
   if (lv === undefined) {
-    const maxLv = Math.floor(enemyId / 10) + 1;
+    const maxLv = Math.floor(enemyId / 20) + 1;
     const spawnableLevels = [];
     for (let candidate = 1; candidate <= maxLv; candidate += 1) {
       if (candidate % 5 !== 0 || !spawnedLimitedEnemyLevels.has(candidate)) spawnableLevels.push(candidate);
