@@ -15,6 +15,10 @@
     applyingSharedState: false,
     sharedStateVersion: 0,
     pendingSharedStateTimer: null,
+    syncedState: null,
+    localStateDirty: false,
+    pendingRemotePatches: [],
+    appliedPatchIds: new Set(),
 
     isActive() {
       return this.active;
@@ -99,13 +103,65 @@
     return state;
   }
 
-  function applySharedState(state, senderId = null) {
-    if (!state || state.version <= session.sharedStateVersion) return;
+  function stateItemsById(items, getId) {
+    return new Map((items || []).map(item => [String(getId(item)), item]));
+  }
+
+  function buildCollectionPatch(previousItems, currentItems, getId) {
+    const previous = stateItemsById(previousItems, getId);
+    const current = stateItemsById(currentItems, getId);
+    const upsert = [];
+    const remove = [];
+    current.forEach((item, id) => {
+      if (!previous.has(id) || JSON.stringify(previous.get(id)) !== JSON.stringify(item)) upsert.push(item);
+    });
+    previous.forEach((item, id) => {
+      if (!current.has(id)) remove.push(id);
+    });
+    return { upsert, remove };
+  }
+
+  function buildStatePatch(previous, current) {
+    const globals = { ...(current.globals || {}) };
+    delete globals.coins;
+    return {
+      saveVersion: current.saveVersion,
+      version: current.version,
+      globals,
+      towers: buildCollectionPatch(previous?.towers, current.towers, tower => tower.dataset?.id),
+      equipment: buildCollectionPatch(previous?.equipment, current.equipment, item => item.id)
+    };
+  }
+
+  function applyCollectionPatch(items, patch, getId) {
+    const result = stateItemsById(items, getId);
+    (patch?.remove || []).forEach(id => result.delete(String(id)));
+    (patch?.upsert || []).forEach(item => result.set(String(getId(item)), item));
+    return [...result.values()];
+  }
+
+  function mergeStatePatch(current, patch) {
+    return {
+      ...current,
+      saveVersion: patch.saveVersion || current.saveVersion,
+      version: Math.max(current.version || 0, patch.version || 0),
+      globals: { ...(current.globals || {}), ...(patch.globals || {}), coins: current.globals?.coins },
+      towers: applyCollectionPatch(current.towers, patch.towers, tower => tower.dataset?.id),
+      equipment: applyCollectionPatch(current.equipment, patch.equipment, item => item.id),
+      enemies: current.enemies
+    };
+  }
+
+  function applyFullSharedState(state) {
+    if (!state || (session.syncedState && state.version <= session.sharedStateVersion)) return;
+    const localCoins = typeof coins === 'number' ? coins : null;
     session.sharedStateVersion = state.version;
     session.applyingSharedState = true;
-
     try {
-      applyGameState(state);
+      applyGameState(state, { preserveLocalUi: true });
+      if (!session.isSpectator && localCoins !== null) coins = localCoins;
+      refreshUpgradeUi();
+      session.syncedState = serializeGameState();
       saveGameStateToStorage();
       resetGameIntervals();
     } finally {
@@ -113,20 +169,50 @@
     }
   }
 
+  function applyRemotePatch(message) {
+    if (!message?.patch || session.appliedPatchIds.has(message.id)) return;
+    if (draggedTower || draggedEquipment || session.localStateDirty) {
+      session.pendingRemotePatches.push(message);
+      return;
+    }
+    session.appliedPatchIds.add(message.id);
+    const merged = mergeStatePatch(serializeGameState(), message.patch);
+    session.applyingSharedState = true;
+    try {
+      applyGameState(merged, { preserveLocalUi: true });
+      session.syncedState = serializeGameState();
+      saveGameStateToStorage();
+      resetGameIntervals();
+    } finally {
+      session.applyingSharedState = false;
+    }
+  }
+
+  session.flushPendingSharedStates = function () {
+    if (draggedTower || draggedEquipment || session.localStateDirty) return;
+    const pending = session.pendingRemotePatches.splice(0);
+    pending.forEach(applyRemotePatch);
+  };
+
   session.reportSharedState = function () {
     if (!session.active || session.isSpectator || !session.channel || session.applyingSharedState || session.ended) return;
 
     clearTimeout(session.pendingSharedStateTimer);
+    session.localStateDirty = true;
     session.pendingSharedStateTimer = setTimeout(() => {
       if (!session.channel || session.applyingSharedState || session.ended) return;
       const state = serializeSharedState();
+      const patch = buildStatePatch(session.syncedState, state);
       session.sharedStateVersion = state.version;
+      session.syncedState = state;
+      session.localStateDirty = false;
       saveGameStateToStorage();
       session.channel.send({
         type: 'broadcast',
         event: 'shared-state',
-        payload: { from: session.clientId, state }
+        payload: { from: session.clientId, id: `${session.clientId}:${state.version}`, patch, coins: state.globals?.coins }
       });
+      session.flushPendingSharedStates();
     }, 50);
   };
 
@@ -135,11 +221,13 @@
     clearTimeout(session.pendingSharedStateTimer);
     const state = serializeSharedState();
     session.sharedStateVersion = state.version;
+    session.syncedState = state;
+    session.localStateDirty = false;
     saveGameStateToStorage();
     session.channel.send({
       type: 'broadcast',
       event: 'shared-state',
-      payload: { from: session.clientId, state }
+        payload: { from: session.clientId, state, full: true }
     });
   };
 
@@ -385,8 +473,9 @@
 
     channel.on('broadcast', { event: 'shared-state' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
-      applySharedState(payload.state, payload.from);
-      const peerCoins = payload.state?.globals?.coins;
+      if (payload.full) applyFullSharedState(payload.state);
+      else applyRemotePatch({ id: payload.id, patch: payload.patch });
+      const peerCoins = payload.coins ?? payload.state?.globals?.coins;
       if (typeof peerCoins === 'number') {
         teamCoinInfo[payload.from] = {
           name: getPresenceName(payload.from) || teamCoinInfo[payload.from]?.name || 'Guest',

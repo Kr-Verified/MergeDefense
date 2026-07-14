@@ -1,10 +1,27 @@
+let teamEquipmentIdSecond = 0;
+let teamEquipmentIdSequence = 0;
+
+function allocateEquipmentId() {
+  if (!window.TeamSession?.isActive() || !window.TeamSession.clientId) return equipmentId++;
+  const second = Math.floor(Date.now() / 1000);
+  if (second !== teamEquipmentIdSecond) {
+    teamEquipmentIdSecond = second;
+    teamEquipmentIdSequence = 0;
+  }
+  let clientHash = 0;
+  for (const char of window.TeamSession.clientId) clientHash = (clientHash * 31 + char.charCodeAt(0)) % 1000;
+  const id = second * 1000000 + clientHash * 1000 + teamEquipmentIdSequence;
+  teamEquipmentIdSequence = (teamEquipmentIdSequence + 1) % 1000;
+  return id;
+}
+
 function createEquipment() {
   const types = Object.keys(EQUIPMENT_TYPES);
   const type = types[Math.floor(Math.random() * types.length)];
   const minValue = type === 'needle' ? 3 : type === 'shield' ? 5 : 3;
   const maxValue = type === 'needle' ? 10 : type === 'shield' ? 50 : 45;
   return {
-    id: equipmentId++,
+    id: allocateEquipmentId(),
     type: type,
     value: Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue
   };
@@ -14,7 +31,7 @@ function createMergedEquipment(firstEquipment, secondEquipment) {
   const minValue = Math.min(firstEquipment.value, secondEquipment.value);
   const maxValue = firstEquipment.value + secondEquipment.value;
   return {
-    id: equipmentId++,
+    id: allocateEquipmentId(),
     type: firstEquipment.type,
     value: Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue
   };
@@ -160,6 +177,7 @@ function makeEquipmentDraggable(elem) {
 
   elem.addEventListener('dragend', e => {
     draggedEquipment = null;
+    window.TeamSession?.flushPendingSharedStates?.();
   });
 
   elem.addEventListener('dragover', e => {

@@ -7,6 +7,11 @@ function makeDraggable(elem) {
     draggedTower = elem;
   });
 
+  elem.addEventListener('dragend', () => {
+    draggedTower = null;
+    window.TeamSession?.flushPendingSharedStates?.();
+  });
+
   elem.addEventListener('click', e => {
     e.stopPropagation();
     if (isSpectatorMode()) return;

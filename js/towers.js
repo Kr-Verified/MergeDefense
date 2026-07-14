@@ -1,6 +1,23 @@
+let teamTowerIdSecond = 0;
+let teamTowerIdSequence = 0;
+
+function allocateTowerId() {
+  if (!window.TeamSession?.isActive() || !window.TeamSession.clientId) return towerId++;
+  const second = Math.floor(Date.now() / 1000);
+  if (second !== teamTowerIdSecond) {
+    teamTowerIdSecond = second;
+    teamTowerIdSequence = 0;
+  }
+  let clientHash = 0;
+  for (const char of window.TeamSession.clientId) clientHash = (clientHash * 31 + char.charCodeAt(0)) % 1000;
+  const id = second * 1000000 + clientHash * 1000 + teamTowerIdSequence;
+  teamTowerIdSequence = (teamTowerIdSequence + 1) % 1000;
+  return id;
+}
+
 function createTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
   return {
-    id: towerId++,
+    id: allocateTowerId(),
     lv: lv,
     star: star,
     attribute: attribute,

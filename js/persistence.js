@@ -94,6 +94,51 @@ function clearEnemyElement(enemy) {
   if (enemy?.element && document.body.contains(enemy.element)) enemy.element.remove();
 }
 
+function captureLocalUiState() {
+  const towerIdOf = tower => tower?.dataset?.id || null;
+  return {
+    selectedTowerId: towerIdOf(selectedTower),
+    waitingTowerId: towerIdOf(waitingTowerActionTarget),
+    draggedTowerId: towerIdOf(draggedTower),
+    draggedEquipmentId: draggedEquipment?.dataset?.id || null,
+    upgradeOpen: !upgradeModal?.classList.contains('hidden'),
+    towerActionOpen: !towerActionPopup?.classList.contains('hidden'),
+    deleteOpen: !deleteTowerModal?.classList.contains('hidden'),
+    fusionOpen: !fusionModal?.classList.contains('hidden'),
+    blacksmithOpen: !blacksmithModal?.classList.contains('hidden'),
+    forgeSlots: typeof forgeSlots !== 'undefined' ? [...forgeSlots] : null,
+    forgeActiveSlot: typeof forgeActiveSlot !== 'undefined' ? forgeActiveSlot : null
+  };
+}
+
+function restoreLocalUiState(uiState) {
+  if (!uiState) return;
+  const findTower = id => id === null ? null : [...document.querySelectorAll('.tower')].find(tower => tower.dataset.id === String(id)) || null;
+  const findEquipment = id => id === null ? null : [...document.querySelectorAll('#create-bar .equipment')].find(item => item.dataset.id === String(id)) || null;
+
+  selectedTower = findTower(uiState.selectedTowerId);
+  waitingTowerActionTarget = findTower(uiState.waitingTowerId);
+  draggedTower = findTower(uiState.draggedTowerId);
+  draggedEquipment = findEquipment(uiState.draggedEquipmentId);
+
+  if (selectedTower && uiState.upgradeOpen && board.contains(selectedTower)) {
+    selectedTower.classList.add('selected');
+    isUpgradeModalOpen = true;
+    updateGamePausedState();
+    upgradeModal.classList.remove('hidden');
+    refreshUpgradeModal();
+  }
+  if (waitingTowerActionTarget && uiState.towerActionOpen) towerActionPopup.classList.remove('hidden');
+  if (waitingTowerActionTarget && uiState.deleteOpen) deleteTowerModal.classList.remove('hidden');
+  if (waitingTowerActionTarget && uiState.fusionOpen) fusionModal.classList.remove('hidden');
+  if (uiState.blacksmithOpen) {
+    if (uiState.forgeSlots) forgeSlots = [...uiState.forgeSlots];
+    forgeActiveSlot = uiState.forgeActiveSlot;
+    refreshBlacksmithModal();
+    blacksmithModal.classList.remove('hidden');
+  }
+}
+
 function clearCurrentGameEntities() {
   if (selectedTower) selectedTower.classList.remove('selected');
   selectedTower = null;
@@ -195,9 +240,10 @@ function createEnemyFromSavedState(state) {
   return enemy;
 }
 
-function applyGameState(state) {
+function applyGameState(state, options = {}) {
   if (!state || state.saveVersion !== GAME_SAVE_VERSION || isGameOver) return false;
 
+  const localUiState = options.preserveLocalUi ? captureLocalUiState() : null;
   clearCurrentGameEntities();
 
   const globals = state.globals || {};
@@ -268,6 +314,7 @@ function applyGameState(state) {
   updateInventoryView();
   refreshUpgradeUi();
   refreshSkillBar();
+  restoreLocalUiState(localUiState);
   return true;
 }
 
