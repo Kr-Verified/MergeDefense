@@ -70,7 +70,8 @@ async function endGame() {
 }
 
 function updateGamePausedState() {
-  isGamePaused = isGameOver || isUpgradeModalOpen || gameSpeed === 0;
+  const pauseForUpgradeModal = isUpgradeModalOpen && !isTeamActive();
+  isGamePaused = isGameOver || pauseForUpgradeModal || gameSpeed === 0;
 }
 
 function getInstalledTowerCount() {

@@ -124,6 +124,7 @@
   function buildStatePatch(previous, current) {
     const globals = { ...(current.globals || {}) };
     delete globals.coins;
+    delete globals.skillLastUsed;
     return {
       saveVersion: current.saveVersion,
       version: current.version,
@@ -155,12 +156,19 @@
   function applyFullSharedState(state) {
     if (!state || (session.syncedState && state.version <= session.sharedStateVersion)) return;
     const localCoins = typeof coins === 'number' ? coins : null;
+    const localSkillLastUsed = typeof skillLastUsed === 'object' ? { ...skillLastUsed } : null;
     session.sharedStateVersion = state.version;
     session.applyingSharedState = true;
     try {
       applyGameState(state, { preserveLocalUi: true });
       if (!session.isSpectator && localCoins !== null) coins = localCoins;
+      if (!session.isSpectator && localSkillLastUsed) {
+        Object.keys(skillLastUsed).forEach(key => {
+          skillLastUsed[key] = localSkillLastUsed[key] || skillLastUsed[key];
+        });
+      }
       refreshUpgradeUi();
+      refreshSkillBar();
       session.syncedState = serializeGameState();
       saveGameStateToStorage();
       resetGameIntervals();
@@ -200,7 +208,10 @@
     clearTimeout(session.pendingSharedStateTimer);
     session.localStateDirty = true;
     session.pendingSharedStateTimer = setTimeout(() => {
-      if (!session.channel || session.applyingSharedState || session.ended) return;
+      if (!session.channel || session.ended) {
+        session.localStateDirty = false;
+        return;
+      }
       const state = serializeSharedState();
       const patch = buildStatePatch(session.syncedState, state);
       session.sharedStateVersion = state.version;
@@ -216,7 +227,7 @@
     }, 50);
   };
 
-  session.reportSharedStateNow = function () {
+  session.reportSharedStateNow = function (targetClientId = null) {
     if (!session.active || session.isSpectator || !session.channel || session.applyingSharedState || session.ended) return;
     clearTimeout(session.pendingSharedStateTimer);
     const state = serializeSharedState();
@@ -227,7 +238,7 @@
     session.channel.send({
       type: 'broadcast',
       event: 'shared-state',
-        payload: { from: session.clientId, state, full: true }
+      payload: { from: session.clientId, to: targetClientId, state, full: true }
     });
   };
 
@@ -473,6 +484,7 @@
 
     channel.on('broadcast', { event: 'shared-state' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
+      if (payload.to && payload.to !== session.clientId) return;
       if (payload.full) applyFullSharedState(payload.state);
       else applyRemotePatch({ id: payload.id, patch: payload.patch });
       const peerCoins = payload.coins ?? payload.state?.globals?.coins;
@@ -487,7 +499,7 @@
 
     channel.on('broadcast', { event: 'state-request' }, ({ payload }) => {
       if (!session.isHost || !payload || payload.from === session.clientId) return;
-      session.reportSharedStateNow();
+      session.reportSharedStateNow(payload.from);
     });
 
     channel.on('broadcast', { event: 'game-end' }, ({ payload }) => {
