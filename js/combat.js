@@ -219,6 +219,35 @@ function applyRemoteEnemyHit(enemyId, amount) {
   enemy.element.innerHTML = getEnemyHtml(enemy);
 }
 
+function applyRemoteEnemyStatus(enemyId, status) {
+  const enemy = enemies.find(item => item.id === enemyId);
+  if (!enemy || !document.body.contains(enemy.element)) return null;
+  const now = Date.now();
+  const slowUntil = now + Math.max(0, Number(status.slowRemaining) || 0);
+  const stopUntil = now + Math.max(0, Number(status.stopRemaining) || 0);
+  const regenSuppressedUntil = now + Math.max(0, Number(status.regenSuppressRemaining) || 0);
+  if (status.authoritative || slowUntil > parseInt(enemy.element.dataset.slowUntil || '0', 10)) {
+    enemy.element.dataset.slowUntil = `${slowUntil}`;
+  }
+  if (status.authoritative || stopUntil > parseInt(enemy.element.dataset.stopUntil || '0', 10)) {
+    enemy.element.dataset.stopUntil = `${stopUntil}`;
+  }
+  if (status.authoritative || regenSuppressedUntil > parseInt(enemy.element.dataset.regenSuppressedUntil || '0', 10)) {
+    enemy.element.dataset.regenSuppressedUntil = `${regenSuppressedUntil}`;
+  }
+  if (Number.isFinite(Number(status.slowMult))) enemy.element.dataset.slowMult = `${status.slowMult}`;
+  if (status.authoritative && Number.isFinite(Number(status.left)) && Number.isFinite(Number(status.top))) {
+    enemy.element.style.left = `${Number(status.left)}px`;
+    enemy.element.style.top = `${Number(status.top)}px`;
+  }
+  return enemy;
+}
+
+function reportEnemyStatus(enemy) {
+  if (!window.TeamSession?.isActive() || !enemy?.element || !document.body.contains(enemy.element)) return;
+  window.TeamSession.reportEnemyStatus(enemy);
+}
+
 function removeRemoteEnemy(enemyId) {
   const idx = enemies.findIndex(e => e.id === enemyId);
   if (idx === -1) return;

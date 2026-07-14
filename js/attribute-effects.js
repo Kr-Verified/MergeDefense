@@ -232,6 +232,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
     const slowUntil = stopUntil + config.freeze.slowMs;
     if (slowUntil > parseInt(el.dataset.slowUntil || '0', 10)) el.dataset.slowUntil = `${slowUntil}`;
     el.dataset.slowMult = `${config.freeze.slowMult}`;
+    reportEnemyStatus(targetEnemy);
   }
 
   if (config.slow) {
@@ -240,6 +241,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
       const slowUntil = now + getEnemyControlDuration(enemy, config.slow.durationMs, 'slow');
       if (slowUntil > parseInt(enemy.element.dataset.slowUntil || '0', 10)) enemy.element.dataset.slowUntil = `${slowUntil}`;
       enemy.element.dataset.slowMult = `${config.slow.speedMult}`;
+      reportEnemyStatus(enemy);
     });
   }
 
@@ -255,6 +257,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
         if (!document.body.contains(enemy.element)) return;
         const stopUntil = now + getEnemyControlDuration(enemy, durationMs, 'stop');
         if (stopUntil > parseInt(enemy.element.dataset.stopUntil || '0', 10)) enemy.element.dataset.stopUntil = `${stopUntil}`;
+        reportEnemyStatus(enemy);
       });
     }
   }
@@ -263,6 +266,7 @@ function applyAttributeOnHitEffects(fromTower, targetEnemy, dealtDamage, config,
     const el = targetEnemy.element;
     const suppressUntil = now + config.suppressRegen.durationMs;
     if (suppressUntil > parseInt(el.dataset.regenSuppressedUntil || '0', 10)) el.dataset.regenSuppressedUntil = `${suppressUntil}`;
+    reportEnemyStatus(targetEnemy);
   }
 
   if (config.burn) {
@@ -396,6 +400,7 @@ function maybeTriggerUltimateBurst(tower) {
     if (dealt > 0 && document.body.contains(enemy.element)) {
       const stopUntil = now + config.ultimateBurst.stunMs;
       if (stopUntil > parseInt(enemy.element.dataset.stopUntil || '0', 10)) enemy.element.dataset.stopUntil = `${stopUntil}`;
+      reportEnemyStatus(enemy);
     }
   });
 }

@@ -7,6 +7,7 @@ function castFrostWave() {
     if (!document.body.contains(enemy.element)) return;
     enemy.element.dataset.slowUntil = `${Date.now() + getEnemyControlDuration(enemy, 4000, 'slow')}`;
     enemy.element.dataset.slowMult = '0.5';
+    reportEnemyStatus(enemy);
   });
 }
 

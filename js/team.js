@@ -70,6 +70,27 @@
     });
   };
 
+  session.reportEnemyStatus = function (enemy) {
+    if (!session.channel || session.isSpectator || !enemy?.element) return;
+    const now = Date.now();
+    const authoritative = session.isHost === true;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'enemy-status',
+      payload: {
+        from: session.clientId,
+        id: enemy.id,
+        authoritative,
+        slowRemaining: Math.max(0, parseInt(enemy.element.dataset.slowUntil || '0', 10) - now),
+        stopRemaining: Math.max(0, parseInt(enemy.element.dataset.stopUntil || '0', 10) - now),
+        regenSuppressRemaining: Math.max(0, parseInt(enemy.element.dataset.regenSuppressedUntil || '0', 10) - now),
+        slowMult: parseFloat(enemy.element.dataset.slowMult || '0.5'),
+        left: authoritative ? enemy.element.offsetLeft : null,
+        top: authoritative ? enemy.element.offsetTop : null
+      }
+    });
+  };
+
   session.reportEnemyDeath = function (enemyId, reward = 0) {
     if (!session.channel || session.isSpectator) return;
     session.channel.send({
@@ -467,6 +488,12 @@
     channel.on('broadcast', { event: 'enemy-hit' }, ({ payload }) => {
       if (payload.from === session.clientId) return;
       applyRemoteEnemyHit(payload.id, payload.amount);
+    });
+
+    channel.on('broadcast', { event: 'enemy-status' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      const enemy = applyRemoteEnemyStatus(payload.id, payload);
+      if (session.isHost && !payload.authoritative && enemy) session.reportEnemyStatus(enemy);
     });
 
     channel.on('broadcast', { event: 'enemy-death' }, ({ payload }) => {
