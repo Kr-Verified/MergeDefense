@@ -59,6 +59,7 @@ function serializeGameState() {
     version: Date.now(),
     globals: {
       coins,
+      personalTimeTokens,
       spawnLv,
       health,
       maxHealth,
@@ -168,6 +169,8 @@ function createTowerFromSavedState(state) {
   tower.innerHTML = getTowerHtml(lv, star, attribute);
   tower.draggable = true;
   Object.keys(data).forEach(key => { tower.dataset[key] = data[key]; });
+  applyTowerSizeClass(tower);
+  reconcileTowerEquipmentStats(tower);
 
   if (state.container === 'board') {
     tower.style.position = 'absolute';
@@ -248,6 +251,7 @@ function applyGameState(state, options = {}) {
 
   const globals = state.globals || {};
   coins = globals.coins ?? coins;
+  personalTimeTokens = globals.personalTimeTokens ?? personalTimeTokens;
   spawnLv = globals.spawnLv ?? spawnLv;
   health = globals.health ?? health;
   maxHealth = globals.maxHealth ?? maxHealth;

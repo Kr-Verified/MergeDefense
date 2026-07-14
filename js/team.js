@@ -7,6 +7,10 @@
     active: Boolean(roomIdParam),
     isSpectator: isSpectatorParam,
     isHost: null,
+    originalHostId: null,
+    authorityClientId: null,
+    enemySnapshotVersion: 0,
+    lastEnemySnapshotVersion: 0,
     roomId: roomIdParam ? parseInt(roomIdParam, 10) : null,
     clientId: localStorage.getItem('clientId') || null,
     playerName: localStorage.getItem('name') || 'Guest',
@@ -61,6 +65,37 @@
     });
   };
 
+  session.reportEnemySnapshot = function () {
+    if (!session.channel || !session.isHost || session.isSpectator || session.ended) return;
+    const now = Date.now();
+    session.enemySnapshotVersion += 1;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'enemy-snapshot',
+      payload: {
+        from: session.clientId,
+        version: session.enemySnapshotVersion,
+        enemies: enemies
+          .filter(enemy => enemy.element && document.body.contains(enemy.element))
+          .map(enemy => ({
+            id: enemy.id,
+            lv: enemy.lv,
+            star: enemy.star,
+            attribute: enemy.attribute,
+            hp: enemy.hp,
+            maxHp: enemy.maxHp,
+            castleDamage: enemy.castleDamage,
+            left: enemy.element.offsetLeft,
+            top: enemy.element.offsetTop,
+            slowRemaining: Math.max(0, parseInt(enemy.element.dataset.slowUntil || '0', 10) - now),
+            stopRemaining: Math.max(0, parseInt(enemy.element.dataset.stopUntil || '0', 10) - now),
+            regenSuppressRemaining: Math.max(0, parseInt(enemy.element.dataset.regenSuppressedUntil || '0', 10) - now),
+            slowMult: parseFloat(enemy.element.dataset.slowMult || '0.5')
+          }))
+      }
+    });
+  };
+
   session.reportEnemyHit = function (enemyId, amount) {
     if (!session.channel || session.isSpectator) return;
     session.channel.send({
@@ -109,6 +144,38 @@
     });
   };
 
+  session.reportGameSpeed = function (speed) {
+    if (!session.channel || session.isSpectator) return;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'game-speed',
+      payload: { from: session.clientId, speed, authoritative: session.isHost === true }
+    });
+  };
+
+  session.reportTowerHealth = function (tower) {
+    if (!session.channel || session.isSpectator || !tower?.dataset?.id) return;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'tower-health',
+      payload: {
+        from: session.clientId,
+        id: tower.dataset.id,
+        hp: parseInt(tower.dataset.hp || '0', 10),
+        maxHp: parseInt(tower.dataset.maxHp || '1', 10)
+      }
+    });
+  };
+
+  session.reportTowerDestroyed = function (towerId) {
+    if (!session.channel || session.isSpectator || towerId === undefined || towerId === null) return;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'tower-destroyed',
+      payload: { from: session.clientId, id: String(towerId) }
+    });
+  };
+
   session.reportCursorMove = function (xRatio, yRatio) {
     if (!session.channel || session.isSpectator) return;
     session.channel.send({
@@ -145,7 +212,9 @@
   function buildStatePatch(previous, current) {
     const globals = { ...(current.globals || {}) };
     delete globals.coins;
+    delete globals.personalTimeTokens;
     delete globals.skillLastUsed;
+    if (!session.isHost) delete globals.gameSpeed;
     return {
       saveVersion: current.saveVersion,
       version: current.version,
@@ -177,12 +246,14 @@
   function applyFullSharedState(state) {
     if (!state || (session.syncedState && state.version <= session.sharedStateVersion)) return;
     const localCoins = typeof coins === 'number' ? coins : null;
+    const localPersonalTimeTokens = typeof personalTimeTokens === 'number' ? personalTimeTokens : 0;
     const localSkillLastUsed = typeof skillLastUsed === 'object' ? { ...skillLastUsed } : null;
     session.sharedStateVersion = state.version;
     session.applyingSharedState = true;
     try {
       applyGameState(state, { preserveLocalUi: true });
       if (!session.isSpectator && localCoins !== null) coins = localCoins;
+      if (!session.isSpectator) personalTimeTokens = localPersonalTimeTokens;
       if (!session.isSpectator && localSkillLastUsed) {
         Object.keys(skillLastUsed).forEach(key => {
           skillLastUsed[key] = localSkillLastUsed[key] || skillLastUsed[key];
@@ -422,14 +493,43 @@
   };
 
   function renderTeamModeBadge() {
-    if (document.getElementById('team-mode-badge')) return;
     const nameEl = document.getElementById('name');
     if (!nameEl) return;
 
-    const badge = document.createElement('div');
-    badge.id = 'team-mode-badge';
-    badge.textContent = session.isSpectator ? '관전 모드' : session.isHost ? '팀 플레이 · 호스트' : '팀 플레이';
-    nameEl.insertAdjacentElement('afterend', badge);
+    let badge = document.getElementById('team-mode-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'team-mode-badge';
+      nameEl.insertAdjacentElement('afterend', badge);
+    }
+    const isOriginalHost = session.clientId === session.originalHostId;
+    badge.textContent = session.isSpectator
+      ? '관전 모드'
+      : session.isHost
+        ? (isOriginalHost ? '팀 플레이 · 호스트' : '팀 플레이 · 임시 호스트')
+        : '팀 플레이';
+  }
+
+  function electSimulationAuthority(presenceState) {
+    const playerIds = Object.keys(presenceState || {}).sort();
+    const nextAuthorityId = playerIds.includes(session.originalHostId)
+      ? session.originalHostId
+      : (playerIds[0] || null);
+    const changed = nextAuthorityId !== session.authorityClientId;
+    session.authorityClientId = nextAuthorityId;
+    if (changed) session.lastEnemySnapshotVersion = 0;
+    session.isHost = !session.isSpectator && nextAuthorityId === session.clientId;
+    renderTeamModeBadge();
+    if (!changed) return;
+    if (typeof resetGameIntervals === 'function') resetGameIntervals();
+    if (session.isHost) session.reportSharedStateNow();
+    else if (nextAuthorityId && session.channel) {
+      session.channel.send({
+        type: 'broadcast',
+        event: 'state-request',
+        payload: { from: session.clientId, to: nextAuthorityId }
+      });
+    }
   }
 
   function renderTeamPlayerList(presenceState) {
@@ -466,6 +566,8 @@
       return;
     }
 
+    session.originalHostId = room.host_client_id;
+    session.authorityClientId = room.host_client_id;
     session.isHost = !session.isSpectator && room.host_client_id === session.clientId;
 
     if (typeof maxHealth !== 'undefined') {
@@ -483,6 +585,13 @@
         left: payload.left,
         top: payload.top
       });
+    });
+
+    channel.on('broadcast', { event: 'enemy-snapshot' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      if (payload.from !== session.authorityClientId || payload.version <= session.lastEnemySnapshotVersion) return;
+      session.lastEnemySnapshotVersion = payload.version;
+      applyRemoteEnemySnapshot(payload.enemies || []);
     });
 
     channel.on('broadcast', { event: 'enemy-hit' }, ({ payload }) => {
@@ -509,6 +618,23 @@
       applyRemoteCastleHit(payload.amount);
     });
 
+    channel.on('broadcast', { event: 'game-speed' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      if (!payload.authoritative && !session.isHost) return;
+      applyRemoteGameSpeed(payload.speed);
+      if (session.isHost && !payload.authoritative) session.reportGameSpeed(gameSpeed);
+    });
+
+    channel.on('broadcast', { event: 'tower-health' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      applyRemoteTowerHealth(payload.id, payload.hp, payload.maxHp);
+    });
+
+    channel.on('broadcast', { event: 'tower-destroyed' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      applyRemoteTowerDestroyed(payload.id);
+    });
+
     channel.on('broadcast', { event: 'shared-state' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
       if (payload.to && payload.to !== session.clientId) return;
@@ -526,6 +652,7 @@
 
     channel.on('broadcast', { event: 'state-request' }, ({ payload }) => {
       if (!session.isHost || !payload || payload.from === session.clientId) return;
+      if (payload.to && payload.to !== session.clientId) return;
       session.reportSharedStateNow(payload.from);
     });
 
@@ -546,6 +673,7 @@
       renderTeamPlayerList(presenceState);
       pruneRemoteCursors(presenceState);
       pruneTeamCoinInfo(presenceState);
+      electSimulationAuthority(presenceState);
     });
 
     channel.subscribe(async status => {
@@ -582,9 +710,10 @@
       session.reportCursorMove(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
     });
 
-    if (session.isHost) {
-      setInterval(() => {
-        if (session.ended || typeof health === 'undefined') return;
+    setInterval(() => session.reportEnemySnapshot(), 150);
+
+    setInterval(() => {
+        if (!session.isHost || session.ended || typeof health === 'undefined') return;
         supabaseClient
           .from('rooms')
           .update({
@@ -595,7 +724,6 @@
           .eq('id', session.roomId)
           .then(() => {});
       }, 5000);
-    }
 
     renderTeamModeBadge();
     if (typeof resetGameIntervals === 'function') resetGameIntervals();

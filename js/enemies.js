@@ -21,8 +21,19 @@ function isEmpoweredEnemyLevel(lv) {
   return parseInt(lv, 10) % 11 === 0;
 }
 
+function isFixedDamageEnemyLevel(lv) {
+  return parseInt(lv, 10) % 17 === 0;
+}
+
 function getEnemyLevelHealthMultiplier(lv) {
-  return isEmpoweredEnemyLevel(lv) ? 0.5 : 1;
+  const level = parseInt(lv, 10);
+  let highLevelMultiplier = 1;
+  if (level >= 150) highLevelMultiplier = 128;
+  else if (level >= 100) highLevelMultiplier = 32;
+  else if (level >= 75) highLevelMultiplier = 8;
+  else if (level >= 50) highLevelMultiplier = 4;
+  else if (level >= 25) highLevelMultiplier = 2;
+  return highLevelMultiplier * (isEmpoweredEnemyLevel(level) ? 0.5 : 1);
 }
 
 function getEnemyLevelDamageMultiplier(lv) {
@@ -87,10 +98,7 @@ function getEnemyAttributeCastleDamageMultiplier(attribute) {
 }
 
 function createEnemy(lv, star = getRandomEnemyStar(), attribute = getRandomEnemyAttribute()) {
-  let hp = getBaseEnemyHp(lv);
-  hp *= getEnemyStarHealthMultiplier(star);
-  hp *= getEnemyAttributeMaxHpMultiplier(attribute);
-  hp *= getEnemyLevelHealthMultiplier(lv);
+  const hp = getEnemyMaxHp(lv, star, attribute);
   return {
     id: enemyId++,
     lv: lv,
@@ -101,6 +109,19 @@ function createEnemy(lv, star = getRandomEnemyStar(), attribute = getRandomEnemy
     castleDamage: Math.ceil(getEnemyCastleDamage(lv, star) * getEnemyAttributeCastleDamageMultiplier(attribute)),
     element: null
   }
+}
+
+function getEnemyMaxHp(lv, star, attribute) {
+  const level = Math.max(1, parseInt(lv, 10));
+  let baseHp = getBaseEnemyHp(level);
+  if (isFixedDamageEnemyLevel(level)) {
+    baseHp = level;
+    if (level % 5 === 0) baseHp *= level * 2;
+  }
+  return baseHp *
+    getEnemyStarHealthMultiplier(star) *
+    getEnemyAttributeMaxHpMultiplier(attribute) *
+    getEnemyLevelHealthMultiplier(level);
 }
 
 function getBaseEnemyHp(lv) {
@@ -128,7 +149,7 @@ function getEnemyHtml(enemy) {
 }
 
 function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar, options = {}) {
-  if (isGamePaused) return null;
+  if (isGamePaused && !options.allowWhilePaused) return null;
 
   let lv = forcedLv;
   if (lv === undefined) {
@@ -275,6 +296,7 @@ function maybeTeleportEnemy(enemyDiv, dx, dy, dist) {
 function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
   const interval = setInterval(() => {
     if (isGamePaused) return;
+    if (isTeamActive() && !isTeamSimulationAuthority()) return;
 
     const rect = enemyDiv.getBoundingClientRect();
     const x = rect.left;
@@ -326,4 +348,55 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
     }
   }, 16);
   enemyDiv._moveInterval = interval;
+}
+
+function applyRemoteEnemySnapshot(snapshotEnemies) {
+  if (isTeamSimulationAuthority()) return;
+  const now = Date.now();
+  const remoteIds = new Set(snapshotEnemies.map(state => String(state.id)));
+
+  snapshotEnemies.forEach(state => {
+    let enemy = enemies.find(item => String(item.id) === String(state.id));
+    if (!enemy) {
+      enemy = spawnEnemy(state.id, state.lv, state.attribute, state.star, {
+        left: state.left,
+        top: state.top,
+        allowWhilePaused: true
+      });
+    }
+    if (!enemy?.element || !document.body.contains(enemy.element)) return;
+
+    enemy.lv = parseInt(state.lv, 10);
+    enemy.star = parseInt(state.star || '1', 10);
+    enemy.attribute = state.attribute || 'none';
+    enemy.maxHp = Math.max(1, Number(state.maxHp) || enemy.maxHp);
+    enemy.hp = Math.max(0, Math.min(enemy.maxHp, Number(state.hp)));
+    enemy.castleDamage = Math.max(1, parseInt(state.castleDamage || enemy.castleDamage, 10));
+    enemy.element.dataset.maxHp = `${enemy.maxHp}`;
+    enemy.element.dataset.castleDamage = `${enemy.castleDamage}`;
+    enemy.element.dataset.slowUntil = `${now + Math.max(0, Number(state.slowRemaining) || 0)}`;
+    enemy.element.dataset.stopUntil = `${now + Math.max(0, Number(state.stopRemaining) || 0)}`;
+    enemy.element.dataset.regenSuppressedUntil = `${now + Math.max(0, Number(state.regenSuppressRemaining) || 0)}`;
+    enemy.element.dataset.slowMult = `${Number.isFinite(Number(state.slowMult)) ? state.slowMult : 0.5}`;
+    enemy.element.innerHTML = getEnemyHtml(enemy);
+
+    const targetLeft = Number(state.left);
+    const targetTop = Number(state.top);
+    if (Number.isFinite(targetLeft) && Number.isFinite(targetTop)) {
+      const currentLeft = enemy.element.offsetLeft;
+      const currentTop = enemy.element.offsetTop;
+      const distance = Math.hypot(targetLeft - currentLeft, targetTop - currentTop);
+      const blend = distance > 240 ? 1 : 0.65;
+      enemy.element.style.left = `${currentLeft + (targetLeft - currentLeft) * blend}px`;
+      enemy.element.style.top = `${currentTop + (targetTop - currentTop) * blend}px`;
+    }
+  });
+
+  [...enemies].forEach(enemy => {
+    if (remoteIds.has(String(enemy.id))) return;
+    if (enemy.element?._moveInterval) clearInterval(enemy.element._moveInterval);
+    enemy.element?.remove();
+    const index = enemies.indexOf(enemy);
+    if (index !== -1) enemies.splice(index, 1);
+  });
 }

@@ -220,6 +220,7 @@ function refreshUpgradeModal() {
   towerRangeText.textContent = `공격 범위: ${formatNumber(getTowerRange(selectedTower))}`;
   towerHpText.textContent = `체력: ${formatNumber(parseInt(selectedTower.dataset.hp || '0'))} / ${formatNumber(parseInt(selectedTower.dataset.maxHp || '0'))}${Date.now() < parseInt(selectedTower.dataset.stunUntil || '0') ? ' (기절)' : ''}`;
   towerTimeText.textContent = `타임: ${formatNumber(parseInt(selectedTower.dataset.time || '0'))}`;
+  refreshTimeBankUi();
   const deleteCost = getTowerDeleteCost(selectedTower);
   sellTowerBtn.textContent = `포탑 삭제 -${formatNumber(deleteCost)} $`;
   sellTowerBtn.disabled = coins < deleteCost;
@@ -259,6 +260,59 @@ function refreshUpgradeModal() {
   timeUpgradeHpBtn.disabled = timeHpCount < 1 || parseInt(selectedTower.dataset.time || '0') < timeHpCost;
   timeUpgradeStarBtn.disabled = starUpgradeCost === null || parseInt(selectedTower.dataset.time || '0') < starUpgradeCost;
   refreshGlobalUpgradeButtons();
+}
+
+function getTimeTransferAmount() {
+  const value = Math.floor(Number(timeTransferAmountInput.value));
+  return Number.isSafeInteger(value) && value > 0 ? value : 0;
+}
+
+function refreshTimeBankUi() {
+  if (!timeBankBalanceText || !withdrawTimeBtn || !injectTimeBtn) return;
+  const amount = getTimeTransferAmount();
+  const towerTime = selectedTower ? parseInt(selectedTower.dataset.time || '0', 10) : 0;
+  const withdrawCost = amount * 20;
+  timeBankBalanceText.textContent = `${formatNumber(personalTimeTokens)} T`;
+  if (personalTimeBankBar) personalTimeBankBar.textContent = `${formatNumber(personalTimeTokens)} T`;
+  withdrawTimeBtn.textContent = amount > 0
+    ? `${formatNumber(amount)}T 회수 · ${formatNumber(withdrawCost)}$`
+    : '회수 수량 입력';
+  injectTimeBtn.textContent = amount > 0
+    ? `${formatNumber(amount)}T 주입`
+    : '주입 수량 입력';
+  withdrawTimeBtn.disabled = !selectedTower || amount < 1 || towerTime < amount || coins < withdrawCost;
+  injectTimeBtn.disabled = !selectedTower || amount < 1 || personalTimeTokens < amount;
+}
+
+function withdrawTowerTime() {
+  if (isSpectatorMode() || !selectedTower || !document.body.contains(selectedTower)) return;
+  const amount = getTimeTransferAmount();
+  const cost = amount * 20;
+  const towerTime = parseInt(selectedTower.dataset.time || '0', 10);
+  if (amount < 1 || towerTime < amount || coins < cost) return;
+
+  selectedTower.dataset.time = `${towerTime - amount}`;
+  coins -= cost;
+  personalTimeTokens += amount;
+  GameAudio.play('upgrade');
+  updateTopStatus();
+  refreshUpgradeUi();
+  saveGameStateToStorage();
+  reportTeamSharedState();
+}
+
+function injectTowerTime() {
+  if (isSpectatorMode() || !selectedTower || !document.body.contains(selectedTower)) return;
+  const amount = getTimeTransferAmount();
+  if (amount < 1 || personalTimeTokens < amount) return;
+
+  selectedTower.dataset.time = `${parseInt(selectedTower.dataset.time || '0', 10) + amount}`;
+  personalTimeTokens -= amount;
+  GameAudio.play('upgrade');
+  updateTopStatus();
+  refreshUpgradeUi();
+  saveGameStateToStorage();
+  reportTeamSharedState();
 }
 
 function getTimeUpgradeCost(tower, type) {

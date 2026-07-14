@@ -136,6 +136,7 @@ function move(from, to) {
       div.dataset.lv = lv;
       div.dataset.id = id;
       copyTowerStats(draggedTower, div);
+      applyTowerSizeClass(div);
 
       if (to === board) {
         div.classList.add('installed');

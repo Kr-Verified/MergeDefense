@@ -1,5 +1,5 @@
 function castBarrage() {
-  [...enemies].forEach(enemy => damageEnemy(enemy, enemy.maxHp * 0.3, null, { type: 'skill' }));
+  [...enemies].forEach(enemy => damageEnemy(enemy, enemy.hp * 0.3, null, { type: 'skill' }));
 }
 
 function castFrostWave() {

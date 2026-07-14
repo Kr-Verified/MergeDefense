@@ -2,12 +2,14 @@ let towerId = 0;
 let enemyId = 0;
 let equipmentId = 0;
 let coins = 3;
+let personalTimeTokens = 0;
 let spawnLv = 1;
 const board = document.getElementById('game-board');
 const giveUpBtn = document.getElementById('give-up-btn');
 const createBar = document.getElementById('create-bar');
 const createBtn = document.getElementById('create-btn');
 const coinBar = document.getElementById('coin-bar');
+const personalTimeBankBar = document.getElementById('personal-time-bank');
 const survivalTimeBar = document.getElementById('survival-time');
 const upgradeBtn = document.getElementById('upgrade-create-btn');
 const spawnLvExpress = document.getElementById('spawnLv');
@@ -21,6 +23,10 @@ const towerSpeedText = document.getElementById('tower-speed');
 const towerRangeText = document.getElementById('tower-range');
 const towerHpText = document.getElementById('tower-hp');
 const towerTimeText = document.getElementById('tower-time');
+const timeBankBalanceText = document.getElementById('time-bank-balance');
+const timeTransferAmountInput = document.getElementById('time-transfer-amount');
+const withdrawTimeBtn = document.getElementById('withdraw-time-btn');
+const injectTimeBtn = document.getElementById('inject-time-btn');
 const upgradeSpeedBtn = document.getElementById('upgrade-speed-btn');
 const upgradePowerBtn = document.getElementById('upgrade-power-btn');
 const upgradeRangeBtn = document.getElementById('upgrade-range-btn');
@@ -179,7 +185,7 @@ const EQUIPMENT_TYPES = {
   weight: {
     name: '무게추',
     stat: 'splash',
-    description: '범위공격'
+    description: '폭탄 범위'
   },
   needle: {
     name: '바늘',

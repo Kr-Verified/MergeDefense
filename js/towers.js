@@ -79,6 +79,15 @@ function getTowerUpgradeTotal(tower) {
     parseInt(tower.dataset.hpUpgrade || '0');
 }
 
+function isLargeTowerLevel(lv) {
+  return parseInt(lv, 10) > 200;
+}
+
+function applyTowerSizeClass(tower) {
+  if (!tower) return;
+  tower.classList.toggle('large-tower', isLargeTowerLevel(tower.dataset.lv));
+}
+
 function getTowerHtml(lv, star, attribute = 'none') {
   const stars = '★'.repeat(star);
   const attributeText = getAttributeText(attribute);
@@ -108,7 +117,8 @@ function getTowerMaxHp(tower) {
   const lv = parseInt(tower.dataset.lv);
   const star = parseInt(tower.dataset.star || '1');
   const hpUpgrade = parseInt(tower.dataset.hpUpgrade || '0');
-  const baseMaxHp = lv * 50 * getTowerStarDamageMultiplier(star);
+  const largeTowerMultiplier = isLargeTowerLevel(lv) ? 2 : 1;
+  const baseMaxHp = lv * 50 * getTowerStarDamageMultiplier(star) * largeTowerMultiplier;
   return Math.max(1, Math.floor(baseMaxHp * (1 + hpUpgrade * TOWER_HP_UPGRADE_MULTIPLIER + getEquipmentBonus(tower, 'maxHp'))));
 }
 
@@ -137,11 +147,43 @@ function renderTowerHpBar(tower) {
 function destroyTower(tower) {
   if (!tower || !board.contains(tower)) return;
 
+  const destroyedTowerId = tower.dataset.id;
   releaseTowerEquipment(tower);
   if (tower === selectedTower) closeUpgradeModal();
   tower.remove();
+  window.TeamSession?.reportTowerDestroyed?.(destroyedTowerId);
   refreshUpgradeUi();
   reportTeamSharedState();
+}
+
+function findTowerById(towerId) {
+  return [...document.querySelectorAll('.tower')]
+    .find(tower => tower.dataset.id === String(towerId)) || null;
+}
+
+function applyRemoteTowerHealth(towerId, hp, maxHp) {
+  const tower = findTowerById(towerId);
+  if (!tower) return;
+  const normalizedMaxHp = Math.max(1, parseInt(maxHp || tower.dataset.maxHp || '1', 10));
+  tower.dataset.maxHp = `${normalizedMaxHp}`;
+  tower.dataset.hp = `${Math.max(0, Math.min(normalizedMaxHp, parseInt(hp || '0', 10)))}`;
+  renderTowerHpBar(tower);
+  if (tower === selectedTower) refreshUpgradeModal();
+}
+
+function applyRemoteTowerDestroyed(towerId) {
+  const tower = findTowerById(towerId);
+  if (!tower) return;
+  if (tower === selectedTower) closeUpgradeModal();
+  if (tower === waitingTowerActionTarget) {
+    closeDeleteTowerModal();
+    closeFusionModal();
+    cancelTowerAction();
+  }
+  if (tower === draggedTower) draggedTower = null;
+  tower.remove();
+  updateInventoryView();
+  refreshUpgradeUi();
 }
 
 function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerAttribute()) {
@@ -157,6 +199,7 @@ function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerA
   div.dataset.lv = tower.lv;
   div.dataset.star = tower.star;
   div.dataset.attribute = tower.attribute;
+  applyTowerSizeClass(div);
   setDefaultTowerStats(div);
 
   createBar.appendChild(div);
@@ -165,6 +208,7 @@ function spawnTower(lv, star = getRandomTowerStar(), attribute = getRandomTowerA
 }
 
 function setDefaultTowerStats(tower) {
+  applyTowerSizeClass(tower);
   tower.dataset.speedUpgrade = tower.dataset.speedUpgrade || '0';
   tower.dataset.powerUpgrade = tower.dataset.powerUpgrade || '0';
   tower.dataset.rangeUpgrade = tower.dataset.rangeUpgrade || '0';
@@ -196,6 +240,7 @@ function copyTowerStats(fromTower, toTower) {
   toTower.dataset.stunUntil = fromTower.dataset.stunUntil || '0';
   toTower.dataset.maxHp = fromTower.dataset.maxHp || `${getTowerMaxHp(toTower)}`;
   toTower.dataset.hp = fromTower.dataset.hp || toTower.dataset.maxHp;
+  applyTowerSizeClass(toTower);
   renderTowerHpBar(toTower);
 }
 
@@ -204,8 +249,9 @@ function getTowerDamage(tower) {
   const star = parseInt(tower.dataset.star || '1');
   const powerUpgrade = parseInt(tower.dataset.powerUpgrade || '0');
   const baseDamage = Math.floor(Math.pow(lv, 1.5)) * 10;
+  const largeTowerMultiplier = isLargeTowerLevel(lv) ? 2 : 1;
   const attributeMultiplier = getAttributeDamageMult(tower.dataset.attribute || 'none') * getTowerActiveBuffDamageMult(tower);
-  return Math.floor(baseDamage * getTowerStarDamageMultiplier(star) * attributeMultiplier * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2 + getEquipmentBonus(tower, 'power')));
+  return Math.floor(baseDamage * largeTowerMultiplier * getTowerStarDamageMultiplier(star) * attributeMultiplier * (1 + powerUpgrade * 0.35 + globalPowerUpgrade * 0.2 + getEquipmentBonus(tower, 'power')));
 }
 
 function getTowerRange(tower) {
@@ -217,7 +263,7 @@ function getTowerAttackInterval(tower) {
   const speedUpgrade = parseInt(tower.dataset.speedUpgrade || '0');
   const attributeMultiplier = getAttributeAtkIntervalMult(tower.dataset.attribute || 'none') * getTowerActiveBuffAtkIntervalMult(tower);
   const starMultiplier = parseInt(tower.dataset.star || '1') === 5 ? 1 / 1.5 : 1;
-  const equipmentMultiplier = Math.max(0.1, 1 - getEquipmentBonus(tower, 'speed'));
+  const equipmentMultiplier = 1 / (1 + getEquipmentBonus(tower, 'speed'));
   if (gameSpeed === 0) return Infinity;
   return Math.max(MIN_ATTACK_INTERVAL, BASE_ATTACK_INTERVAL - speedUpgrade * TOWER_SPEED_UPGRADE_STEP - globalSpeedUpgrade * GLOBAL_SPEED_UPGRADE_STEP) * attributeMultiplier * starMultiplier * equipmentMultiplier / gameSpeed;
 }
@@ -232,7 +278,8 @@ function getCriticalChance(tower) {
 }
 
 function getCriticalDamageMultiplier(tower) {
-  return BASE_CRITICAL_DAMAGE_MULTIPLIER + criticalDamageUpgrade * 0.1 + getEquipmentBonus(tower, 'critDamage');
+  const baseMultiplier = BASE_CRITICAL_DAMAGE_MULTIPLIER + criticalDamageUpgrade * 0.1;
+  return baseMultiplier * (1 + getEquipmentBonus(tower, 'critDamage'));
 }
 
 function refreshCreateUpgradeButton() {

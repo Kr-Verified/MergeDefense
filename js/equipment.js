@@ -39,6 +39,7 @@ function createMergedEquipment(firstEquipment, secondEquipment) {
 
 function getEquipmentHtml(equipment) {
   const meta = EQUIPMENT_TYPES[equipment.type];
+  if (!meta) return '';
   return `
     <p class="equipment-name">${meta.name}</p>
     <p class="equipment-effect">${meta.description} +${formatNumber(equipment.value)}%</p>
@@ -60,9 +61,23 @@ function setTowerEquipment(tower, equipment) {
 
 function getEquipmentBonus(tower, stat) {
   return getTowerEquipment(tower).reduce((sum, equipment) => {
-    if (!equipment || EQUIPMENT_TYPES[equipment.type].stat !== stat) return sum;
-    return sum + equipment.value / 100;
+    const meta = equipment ? EQUIPMENT_TYPES[equipment.type] : null;
+    const value = Number(equipment?.value);
+    if (!meta || meta.stat !== stat || !Number.isFinite(value) || value <= 0) return sum;
+    return sum + value / 100;
   }, 0);
+}
+
+function reconcileTowerEquipmentStats(tower, previousMaxHp = null) {
+  if (!tower) return;
+  const storedMaxHp = Math.max(1, parseInt(tower.dataset.maxHp || '1', 10));
+  const oldMaxHp = previousMaxHp === null ? storedMaxHp : Math.max(1, previousMaxHp);
+  const oldHp = Math.max(0, parseInt(tower.dataset.hp || `${oldMaxHp}`, 10));
+  const newMaxHp = getTowerMaxHp(tower);
+  tower.dataset.maxHp = `${newMaxHp}`;
+  tower.dataset.hp = `${Math.max(0, Math.min(newMaxHp, oldHp + (newMaxHp - oldMaxHp)))}`;
+  renderTowerHpBar(tower);
+  if (tower === selectedTower) refreshUpgradeModal();
 }
 
 function spawnEquipment() {
@@ -101,6 +116,7 @@ function refreshEquipmentSlots() {
 
     slot.classList.toggle('locked', locked);
     slot.classList.toggle('filled', !!equipped);
+    Object.keys(EQUIPMENT_TYPES).forEach(type => slot.classList.remove(`equipment-${type}`));
     slot.innerHTML = '';
 
     if (locked) {
@@ -109,6 +125,7 @@ function refreshEquipmentSlots() {
     }
 
     if (equipped) {
+      slot.classList.add(`equipment-${equipped.type}`);
       slot.innerHTML = getEquipmentHtml(equipped);
       return;
     }
@@ -133,7 +150,7 @@ function equipDraggedEquipment(slotIndex) {
   };
 
   setTowerEquipment(selectedTower, equipment);
-  applyTowerMaxHpDelta(selectedTower, oldMaxHp);
+  reconcileTowerEquipmentStats(selectedTower, oldMaxHp);
   draggedEquipment.remove();
   draggedEquipment = null;
   GameAudio.play('equip');
@@ -152,7 +169,7 @@ function unequipEquipment(slotIndex) {
   const oldMaxHp = getTowerMaxHp(selectedTower);
   equipment[slotIndex] = null;
   setTowerEquipment(selectedTower, equipment);
-  applyTowerMaxHpDelta(selectedTower, oldMaxHp);
+  reconcileTowerEquipmentStats(selectedTower, oldMaxHp);
   addEquipmentToInventory(equipped);
   refreshUpgradeUi();
   reportTeamSharedState();

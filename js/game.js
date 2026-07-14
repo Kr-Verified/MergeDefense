@@ -5,6 +5,7 @@ function updateSurvivalTime() {
 function updateTopStatus() {
   updateSurvivalTime();
   coinBar.textContent = `${formatNumber(coins)} $`;
+  personalTimeBankBar.textContent = `${formatNumber(personalTimeTokens)} T`;
   towerCountBar.textContent = `${formatNumber(getInstalledTowerCount())} / ${formatNumber(towerLimit)} 포탑`;
 }
 
@@ -229,7 +230,18 @@ function toggleSpeedMode() {
   updateSpeedModeButton();
   resetGameIntervals();
   refreshSkillBar();
+  window.TeamSession?.reportGameSpeed?.(gameSpeed);
   reportTeamSharedState();
+}
+
+function applyRemoteGameSpeed(speed) {
+  const normalizedSpeed = Number(speed);
+  if (!GAME_SPEED_OPTIONS.includes(normalizedSpeed) || normalizedSpeed === gameSpeed) return;
+  gameSpeed = normalizedSpeed;
+  updateGamePausedState();
+  updateSpeedModeButton();
+  resetGameIntervals();
+  refreshSkillBar();
 }
 
 
@@ -265,6 +277,9 @@ timeUpgradePowerBtn.addEventListener('click', () => upgradeSelectedTowerWithTime
 timeUpgradeRangeBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('range'));
 timeUpgradeHpBtn.addEventListener('click', () => upgradeSelectedTowerWithTime('hp'));
 timeUpgradeStarBtn.addEventListener('click', upgradeSelectedTowerStarWithTime);
+withdrawTimeBtn.addEventListener('click', withdrawTowerTime);
+injectTimeBtn.addEventListener('click', injectTowerTime);
+timeTransferAmountInput.addEventListener('input', refreshTimeBankUi);
 globalSpeedBtn.addEventListener('click', () => upgradeGlobalTowerStat('speed'));
 globalPowerBtn.addEventListener('click', () => upgradeGlobalTowerStat('power'));
 globalRangeBtn.addEventListener('click', () => upgradeGlobalTowerStat('range'));

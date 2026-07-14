@@ -6,6 +6,7 @@ function damageTower(tower, amount) {
   tower.dataset.hp = `${hp}`;
   renderTowerHpBar(tower);
   if (tower === selectedTower) refreshUpgradeModal();
+  window.TeamSession?.reportTowerHealth?.(tower);
   reportTeamSharedState();
 
   if (hp <= 0) destroyTower(tower);
@@ -25,60 +26,113 @@ function applyCriticalDamage(tower, damage) {
   return Math.floor(damage * getCriticalDamageMultiplier(tower));
 }
 
+const activeBullets = [];
+const bulletElementPool = [];
+const MAX_VISIBLE_BULLETS = 150;
+const MAX_ACTIVE_BULLETS = 1200;
+const BULLET_SPEED_PX_PER_SECOND = 312.5;
+let bulletAnimationFrame = null;
+let lastBulletFrameTime = 0;
+let visibleBulletCount = 0;
+
+function acquireBulletElement() {
+  const element = bulletElementPool.pop() || document.createElement('div');
+  element.className = 'bullet';
+  element.style.position = 'fixed';
+  element.style.left = '0';
+  element.style.top = '0';
+  element.style.width = '10px';
+  element.style.height = '10px';
+  element.style.borderRadius = '50%';
+  element.style.backgroundColor = 'black';
+  element.style.pointerEvents = 'none';
+  element.style.willChange = 'transform';
+  document.body.appendChild(element);
+  visibleBulletCount += 1;
+  return element;
+}
+
+function releaseBulletElement(element) {
+  if (!element) return;
+  element.remove();
+  visibleBulletCount = Math.max(0, visibleBulletCount - 1);
+  if (bulletElementPool.length < MAX_VISIBLE_BULLETS) bulletElementPool.push(element);
+}
+
+function removeActiveBullet(index) {
+  const bullet = activeBullets[index];
+  releaseBulletElement(bullet.element);
+  const lastBullet = activeBullets.pop();
+  if (index < activeBullets.length) activeBullets[index] = lastBullet;
+}
+
+function animateBullets(frameTime) {
+  bulletAnimationFrame = null;
+  const deltaSeconds = lastBulletFrameTime
+    ? Math.min(0.05, Math.max(0, (frameTime - lastBulletFrameTime) / 1000))
+    : 0;
+  lastBulletFrameTime = frameTime;
+
+  if (!isGamePaused && gameSpeed > 0) {
+    const targetPositions = new Map();
+    for (let index = activeBullets.length - 1; index >= 0; index -= 1) {
+      const bullet = activeBullets[index];
+      if (!bullet.target?.element || !document.body.contains(bullet.target.element)) {
+        removeActiveBullet(index);
+        continue;
+      }
+
+      let target = targetPositions.get(bullet.target.element);
+      if (!target) {
+        const rect = bullet.target.element.getBoundingClientRect();
+        target = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        targetPositions.set(bullet.target.element, target);
+      }
+
+      const dx = target.x - bullet.x;
+      const dy = target.y - bullet.y;
+      const distance = Math.hypot(dx, dy);
+      const step = BULLET_SPEED_PX_PER_SECOND * deltaSeconds * gameSpeed;
+      const outOfScreen = bullet.x < -20 || bullet.x > window.innerWidth + 20 || bullet.y < -20 || bullet.y > window.innerHeight + 20;
+
+      if (distance <= Math.max(10, step) || outOfScreen) {
+        const sourceTower = bullet.sourceTower;
+        const targetEnemy = bullet.target;
+        removeActiveBullet(index);
+        if (!outOfScreen) applyTowerHit(sourceTower, targetEnemy);
+        continue;
+      }
+
+      bullet.x += (dx / distance) * step;
+      bullet.y += (dy / distance) * step;
+      if (bullet.element) bullet.element.style.transform = `translate3d(${bullet.x - 5}px, ${bullet.y - 5}px, 0)`;
+    }
+  }
+
+  if (activeBullets.length) {
+    bulletAnimationFrame = requestAnimationFrame(animateBullets);
+  } else {
+    lastBulletFrameTime = 0;
+  }
+}
+
 function fireBullet(fromTower, toEnemy) {
   if (!toEnemy || !document.body.contains(toEnemy.element)) return;
+  if (activeBullets.length >= MAX_ACTIVE_BULLETS) {
+    applyTowerHit(fromTower, toEnemy);
+    return;
+  }
 
-  const bullet = document.createElement('div');
-  bullet.className = 'bullet';
-  bullet.style.position = 'absolute';
-  bullet.style.width = '10px';
-  bullet.style.height = '10px';
-  bullet.style.borderRadius = '50%';
-  bullet.style.backgroundColor = 'black';
-  bullet.style.zIndex = '-1';
-
-  // 타워 중심 위치
   const towerRect = fromTower.getBoundingClientRect();
+  const x = towerRect.left + towerRect.width / 2;
+  const y = towerRect.top + towerRect.height / 2;
+  const element = visibleBulletCount < MAX_VISIBLE_BULLETS
+    ? acquireBulletElement()
+    : null;
+  if (element) element.style.transform = `translate3d(${x - 5}px, ${y - 5}px, 0)`;
+  activeBullets.push({ sourceTower: fromTower, target: toEnemy, x, y, element });
 
-  bullet.style.left = `${towerRect.left + towerRect.width / 2}px`;
-  bullet.style.top = `${towerRect.top + towerRect.height / 2}px`;
-
-  document.body.appendChild(bullet);
-
-  const interval = setInterval(() => {
-    if (isGamePaused) return;
-    if (!document.body.contains(toEnemy.element)) {
-      clearInterval(interval);
-      bullet.remove();
-      return;
-    }
-
-    const bulletX = bullet.offsetLeft;
-    const bulletY = bullet.offsetTop;
-    const targetX = toEnemy.element.offsetLeft + 40;
-    const targetY = toEnemy.element.offsetTop + 40;
-
-    const dx = targetX - bulletX;
-    const dy = targetY - bulletY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    const outOfScreen = bulletX < 0 || bulletX > window.innerWidth || bulletY < 0 || bulletY > window.innerHeight;
-
-    if (dist < 10 || outOfScreen) {
-      clearInterval(interval);
-      bullet.remove();
-
-      applyTowerHit(fromTower, toEnemy);
-      return;
-    }
-
-    const speed = 5;
-    const vx = (dx / dist) * speed * gameSpeed;
-    const vy = (dy / dist) * speed * gameSpeed;
-
-    bullet.style.left = `${bulletX + vx}px`;
-    bullet.style.top = `${bulletY + vy}px`;
-  }, 16);
+  if (bulletAnimationFrame === null) bulletAnimationFrame = requestAnimationFrame(animateBullets);
 }
 
 function addTowerTime(tower, amount) {
@@ -180,7 +234,10 @@ function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
   if (!enemy || !document.body.contains(enemy.element)) return 0;
 
   const damageType = options.type || 'attack';
-  const appliedDamage = Math.max(0, Math.floor(damage * getEnemyDamageMultiplier(enemy, sourceTower, damageType)));
+  const modifiedDamage = damage * getEnemyDamageMultiplier(enemy, sourceTower, damageType);
+  const appliedDamage = isFixedDamageEnemyLevel(enemy.lv) && modifiedDamage > 0
+    ? getFixedEnemyHitDamage(sourceTower)
+    : Math.max(0, Math.floor(modifiedDamage));
   if (appliedDamage <= 0) return 0;
 
   enemy.hp -= appliedDamage;
@@ -209,6 +266,13 @@ function damageEnemy(enemy, damage, sourceTower = null, options = {}) {
   }
 
   return appliedDamage;
+}
+
+function getFixedEnemyHitDamage(sourceTower) {
+  if (!sourceTower?.dataset) return 1;
+  const star = Math.max(1, Math.min(5, parseInt(sourceTower.dataset.star || '1', 10)));
+  const largeTowerMultiplier = isLargeTowerLevel(sourceTower.dataset.lv) ? 2 : 1;
+  return star * largeTowerMultiplier;
 }
 
 function applyRemoteEnemyHit(enemyId, amount) {
@@ -293,10 +357,8 @@ function applyTowerHit(fromTower, targetEnemy) {
 function promoteEnemyToThreeStar(enemy) {
   if (enemy.star >= 3 || !document.body.contains(enemy.element)) return;
 
-  const attributeHpMultiplier = getEnemyAttributeMaxHpMultiplier(enemy.attribute);
-  const levelHpMultiplier = getEnemyLevelHealthMultiplier(enemy.lv);
-  const oldMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(enemy.star) * attributeHpMultiplier * levelHpMultiplier;
-  const newMaxHp = getBaseEnemyHp(enemy.lv) * getEnemyStarHealthMultiplier(3) * attributeHpMultiplier * levelHpMultiplier;
+  const oldMaxHp = getEnemyMaxHp(enemy.lv, enemy.star, enemy.attribute);
+  const newMaxHp = getEnemyMaxHp(enemy.lv, 3, enemy.attribute);
 
   enemy.star = 3;
   enemy.hp += newMaxHp - oldMaxHp;

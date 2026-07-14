@@ -13,6 +13,7 @@
     <div id="top-status">
       <span id="survival-time">0초</span>
       <span id="coin-bar">3 $</span>
+      <span id="personal-time-bank">0 T</span>
       <span id="tower-count">0 / 10 포탑</span>
     </div>
     <div id="defense">
@@ -79,6 +80,15 @@
         <p id="tower-range">공격 범위: 400</p>
         <p id="tower-hp">체력: 100 / 100</p>
         <p id="tower-time">타임: 0</p>
+      </div>
+      <div class="time-bank-panel">
+        <div class="time-bank-title">개인 T 보관함 <span id="time-bank-balance">0 T</span></div>
+        <p class="time-bank-desc">타워에서 1T당 20$로 회수하고 다른 타워에 주입할 수 있습니다.</p>
+        <input id="time-transfer-amount" type="number" min="1" step="1" value="1" inputmode="numeric">
+        <div class="time-bank-actions">
+          <button id="withdraw-time-btn" type="button">T 회수</button>
+          <button id="inject-time-btn" type="button">T 주입</button>
+        </div>
       </div>
       <div class="upgrade-actions">
         <div class="tower-upgrade-row">
