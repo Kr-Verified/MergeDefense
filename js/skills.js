@@ -55,6 +55,7 @@ function useSkill(key) {
 
   skillLastUsed[key] = now;
   skill.cast();
+  GameAudio.play(key, { volume: 0.7 });
   refreshSkillBar();
 }
 

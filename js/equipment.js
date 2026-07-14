@@ -52,6 +52,7 @@ function spawnEquipment() {
   if (isSpectatorMode()) return;
   const equipment = createEquipment();
   addEquipmentToInventory(equipment);
+  GameAudio.play('loot', { volume: 0.55, throttle: 100 });
   reportTeamSharedState();
 }
 
@@ -118,6 +119,7 @@ function equipDraggedEquipment(slotIndex) {
   applyTowerMaxHpDelta(selectedTower, oldMaxHp);
   draggedEquipment.remove();
   draggedEquipment = null;
+  GameAudio.play('equip');
   refreshUpgradeUi();
   reportTeamSharedState();
 }
@@ -194,6 +196,7 @@ function mergeEquipment(firstElem, secondElem) {
   secondElem.remove();
   draggedEquipment = null;
   addEquipmentToInventory(mergedEquipment);
+  GameAudio.play('equipmentMerge');
   setInventoryView('item');
   reportTeamSharedState();
 }

@@ -365,6 +365,7 @@ function upgradeSelectedTower(type) {
   if (coins < cost) return;
 
   coins -= cost;
+  GameAudio.play('upgrade');
   const oldMaxHp = getTowerMaxHp(selectedTower);
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
@@ -384,6 +385,7 @@ function upgradeSelectedTowerWithTime(type) {
   if (currentTime < cost) return;
 
   selectedTower.dataset.time = `${currentTime - cost}`;
+  GameAudio.play('upgrade');
   const oldMaxHp = getTowerMaxHp(selectedTower);
   const key = `${type}Upgrade`;
   selectedTower.dataset[key] = `${parseInt(selectedTower.dataset[key] || '0') + count}`;
@@ -406,6 +408,7 @@ function upgradeSelectedTowerStarWithTime() {
   const currentHp = parseInt(selectedTower.dataset.hp || `${oldMaxHp}`);
 
   selectedTower.dataset.time = `${currentTime - cost}`;
+  GameAudio.play('upgrade', { volume: 0.7 });
   selectedTower.dataset.star = `${nextStar}`;
   selectedTower.classList.remove('star-1', 'star-2', 'star-3', 'star-4', 'star-5');
   selectedTower.classList.add(`star-${nextStar}`);
@@ -432,6 +435,7 @@ function upgradeGlobalTowerStat(type) {
   if (coins < cost) return;
 
   coins -= cost;
+  GameAudio.play('upgrade');
 
   if (type === 'speed') globalSpeedUpgrade += count;
   if (type === 'power') globalPowerUpgrade += count;
@@ -450,6 +454,7 @@ function upgradeCriticalStat(type) {
   if (coins < cost) return;
 
   coins -= cost;
+  GameAudio.play('upgrade');
   if (type === 'chance') criticalChanceUpgrade += count;
   if (type === 'damage') criticalDamageUpgrade += count;
 
@@ -465,6 +470,7 @@ function upgradeCastleHealth() {
   if (coins < cost) return;
 
   coins -= cost;
+  GameAudio.play('upgrade');
   castleHealthUpgrade += count;
   maxHealth = BASE_CASTLE_HEALTH + castleHealthUpgrade * 250;
   health = Math.min(maxHealth, health + 250 * count);
@@ -481,6 +487,7 @@ function upgradeTowerLimit() {
   if (coins < cost) return;
 
   coins -= cost;
+  GameAudio.play('upgrade');
   towerLimitUpgrade += count;
   towerLimit += count;
   refreshUpgradeUi();

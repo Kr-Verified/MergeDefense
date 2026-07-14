@@ -43,6 +43,7 @@ function makeDraggable(elem) {
       elem.remove();
 
       spawnTower(draggedLv+1, resultStar, resultAttribute);
+      GameAudio.play('merge', { volume: 0.65 });
       maybeGrantRecipeBook();
       reportTeamSharedState();
     }
@@ -107,6 +108,7 @@ function move(from, to) {
 
     if (from.contains(draggedTower)) {
       if (to === board && getInstalledTowerCount() >= towerLimit) {
+        GameAudio.play('error');
         draggedTower = null;
         refreshUpgradeUi();
         return;
@@ -144,6 +146,7 @@ function move(from, to) {
 
       makeDraggable(div);
       to.appendChild(div);
+      GameAudio.play(to === board ? 'place' : 'recall');
       updateInventoryView();
       refreshUpgradeUi();
       reportTeamSharedState();

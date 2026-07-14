@@ -21,6 +21,7 @@ function stunTower(tower, durationMs) {
 
 function applyCriticalDamage(tower, damage) {
   if (Math.random() >= getCriticalChance(tower)) return Math.floor(damage);
+  GameAudio.play('critical', { volume: 0.38, throttle: 80 });
   return Math.floor(damage * getCriticalDamageMultiplier(tower));
 }
 
@@ -241,6 +242,7 @@ function applyTowerHit(fromTower, targetEnemy) {
   const config = getAttributeEffectConfig(attribute);
   const baseDamage = getTowerDamage(fromTower);
   const attackDamage = applyCriticalDamage(fromTower, baseDamage);
+  GameAudio.play('hit', { volume: 0.13, throttle: 65, rate: 0.94 + Math.random() * 0.12 });
 
   maybeTriggerUltimateBurst(fromTower);
 

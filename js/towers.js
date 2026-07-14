@@ -231,9 +231,10 @@ function spawnBtn() {
   if (coins>=cost) {
     coins-=cost;
     spawnTower(spawnLv);
+    GameAudio.play('create');
     refreshUpgradeUi();
     reportTeamSharedState();
-  }
+  } else GameAudio.play('error');
 }
 
 function getMergedTowerAttribute(firstAttribute, secondAttribute) {

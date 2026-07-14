@@ -239,6 +239,7 @@ function upgradeCreate() {
   if ( coins >= cost ) {
     coins -= cost;
     spawnLv += count;
+    GameAudio.play('upgrade');
     spawnLvExpress.textContent = `${formatNumber(spawnLv)} 생성`;
     priceBar.textContent = `${formatNumber(getTowerCreateCost())} $`
     refreshUpgradeUi();

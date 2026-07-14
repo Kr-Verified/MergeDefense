@@ -142,6 +142,7 @@ function spawnEnemy(forcedId, forcedLv, forcedAttribute, forcedStar, options = {
 
   if (lv % 5 === 0) spawnedLimitedEnemyLevels.add(lv);
   const enemy = createEnemy(lv, forcedStar || getRandomEnemyStar(), forcedAttribute || getRandomEnemyAttribute());
+  if (lv % 5 === 0) GameAudio.play('boss', { volume: 0.65, throttle: 800 });
   if (forcedId !== undefined) enemy.id = forcedId;
   const div = document.createElement('div');
   div.className = `enemy star-${enemy.star} enemy-attr-${enemy.attribute}`;
@@ -294,6 +295,7 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
       const enemy = getEnemyByElement(enemyDiv);
       const castleDamage = parseInt(enemyDiv.dataset.castleDamage || '1');
       health -= castleDamage;
+      GameAudio.play('castleHit', { volume: 0.52, throttle: 180 });
       if (enemy?.attribute === 'vampire') {
         enemy.hp = Math.min(enemy.maxHp, enemy.hp + Math.floor(enemy.maxHp * 0.12 * getEnemyLevelHealMultiplier(enemy.lv)));
         enemy.element.innerHTML = getEnemyHtml(enemy);
