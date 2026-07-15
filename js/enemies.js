@@ -350,6 +350,78 @@ function moveEnemy(enemyDiv, targetX, targetY, speed = 1.5) {
   enemyDiv._moveInterval = interval;
 }
 
+let remoteEnemyAnimationFrame = null;
+let lastRemoteEnemyFrameAt = 0;
+
+function animateRemoteEnemies(frameAt) {
+  remoteEnemyAnimationFrame = null;
+  if (isTeamSimulationAuthority()) return;
+
+  const delta = Math.min(50, Math.max(0, frameAt - (lastRemoteEnemyFrameAt || frameAt)));
+  lastRemoteEnemyFrameAt = frameAt;
+  const blend = 1 - Math.exp(-delta / 55);
+  let hasRemoteEnemies = false;
+
+  enemies.forEach(enemy => {
+    const motion = enemy.element?._remoteMotion;
+    if (!motion || !document.body.contains(enemy.element)) return;
+    hasRemoteEnemies = true;
+
+    const predictionMs = Math.min(180, Math.max(0, frameAt - motion.receivedAt));
+    const predictedX = motion.targetX + motion.velocityX * predictionMs;
+    const predictedY = motion.targetY + motion.velocityY * predictionMs;
+    const distance = Math.hypot(predictedX - motion.x, predictedY - motion.y);
+    if (distance > 300) {
+      motion.x = predictedX;
+      motion.y = predictedY;
+    } else {
+      motion.x += (predictedX - motion.x) * blend;
+      motion.y += (predictedY - motion.y) * blend;
+    }
+    enemy.element.style.transform = `translate3d(${motion.x}px, ${motion.y}px, 0)`;
+  });
+
+  if (hasRemoteEnemies) remoteEnemyAnimationFrame = requestAnimationFrame(animateRemoteEnemies);
+}
+
+function setRemoteEnemyMotionTarget(enemyElement, left, top) {
+  if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+  const now = performance.now();
+  let motion = enemyElement._remoteMotion;
+  if (!motion) {
+    motion = { x: left, y: top, targetX: left, targetY: top, velocityX: 0, velocityY: 0, receivedAt: now };
+    enemyElement._remoteMotion = motion;
+    enemyElement.style.left = '0px';
+    enemyElement.style.top = '0px';
+    enemyElement.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+    enemyElement.style.willChange = 'transform';
+  } else {
+    const elapsed = Math.max(1, now - motion.receivedAt);
+    motion.velocityX = (left - motion.targetX) / elapsed;
+    motion.velocityY = (top - motion.targetY) / elapsed;
+    motion.targetX = left;
+    motion.targetY = top;
+    motion.receivedAt = now;
+  }
+  if (remoteEnemyAnimationFrame === null) {
+    lastRemoteEnemyFrameAt = now;
+    remoteEnemyAnimationFrame = requestAnimationFrame(animateRemoteEnemies);
+  }
+}
+
+function reconcileEnemyAuthorityMode() {
+  if (!isTeamSimulationAuthority()) return;
+  enemies.forEach(enemy => {
+    const motion = enemy.element?._remoteMotion;
+    if (!motion) return;
+    enemy.element.style.left = `${motion.x}px`;
+    enemy.element.style.top = `${motion.y}px`;
+    enemy.element.style.transform = '';
+    enemy.element.style.willChange = '';
+    delete enemy.element._remoteMotion;
+  });
+}
+
 function applyRemoteEnemySnapshot(snapshotEnemies) {
   if (isTeamSimulationAuthority()) return;
   const now = Date.now();
@@ -378,18 +450,15 @@ function applyRemoteEnemySnapshot(snapshotEnemies) {
     enemy.element.dataset.stopUntil = `${now + Math.max(0, Number(state.stopRemaining) || 0)}`;
     enemy.element.dataset.regenSuppressedUntil = `${now + Math.max(0, Number(state.regenSuppressRemaining) || 0)}`;
     enemy.element.dataset.slowMult = `${Number.isFinite(Number(state.slowMult)) ? state.slowMult : 0.5}`;
-    enemy.element.innerHTML = getEnemyHtml(enemy);
+    const renderKey = `${enemy.lv}:${enemy.star}:${enemy.attribute}:${Math.ceil(enemy.hp)}:${enemy.castleDamage}`;
+    if (enemy.element.dataset.remoteRenderKey !== renderKey) {
+      enemy.element.innerHTML = getEnemyHtml(enemy);
+      enemy.element.dataset.remoteRenderKey = renderKey;
+    }
 
     const targetLeft = Number(state.left);
     const targetTop = Number(state.top);
-    if (Number.isFinite(targetLeft) && Number.isFinite(targetTop)) {
-      const currentLeft = enemy.element.offsetLeft;
-      const currentTop = enemy.element.offsetTop;
-      const distance = Math.hypot(targetLeft - currentLeft, targetTop - currentTop);
-      const blend = distance > 240 ? 1 : 0.65;
-      enemy.element.style.left = `${currentLeft + (targetLeft - currentLeft) * blend}px`;
-      enemy.element.style.top = `${currentTop + (targetTop - currentTop) * blend}px`;
-    }
+    setRemoteEnemyMotionTarget(enemy.element, targetLeft, targetTop);
   });
 
   [...enemies].forEach(enemy => {

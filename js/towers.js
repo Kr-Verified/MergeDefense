@@ -148,6 +148,7 @@ function destroyTower(tower) {
   if (!tower || !board.contains(tower)) return;
 
   const destroyedTowerId = tower.dataset.id;
+  window.TeamSession?.rememberTowerDestroyed?.(destroyedTowerId);
   releaseTowerEquipment(tower);
   if (tower === selectedTower) closeUpgradeModal();
   tower.remove();
@@ -162,16 +163,45 @@ function findTowerById(towerId) {
 }
 
 function applyRemoteTowerHealth(towerId, hp, maxHp) {
+  if (window.TeamSession?.destroyedTowerIds?.has(String(towerId))) return;
   const tower = findTowerById(towerId);
   if (!tower) return;
   const normalizedMaxHp = Math.max(1, parseInt(maxHp || tower.dataset.maxHp || '1', 10));
+  const normalizedHp = Math.max(0, Math.min(normalizedMaxHp, parseInt(hp || '0', 10)));
+  if (normalizedHp <= 0) {
+    window.TeamSession?.rememberTowerDestroyed?.(towerId);
+    applyRemoteTowerDestroyed(towerId);
+    return;
+  }
   tower.dataset.maxHp = `${normalizedMaxHp}`;
-  tower.dataset.hp = `${Math.max(0, Math.min(normalizedMaxHp, parseInt(hp || '0', 10)))}`;
+  tower.dataset.hp = `${normalizedHp}`;
   renderTowerHpBar(tower);
   if (tower === selectedTower) refreshUpgradeModal();
 }
 
+function applyRemoteTowerStunned(towerId, remainingMs) {
+  if (window.TeamSession?.destroyedTowerIds?.has(String(towerId))) return;
+  const tower = findTowerById(towerId);
+  if (!tower) return;
+  const remaining = Math.max(0, parseInt(remainingMs || '0', 10));
+  const stunUntil = Date.now() + remaining;
+  if (stunUntil > parseInt(tower.dataset.stunUntil || '0', 10)) {
+    tower.dataset.stunUntil = `${stunUntil}`;
+  }
+  tower.classList.toggle('stunned', remaining > 0);
+  if (tower === selectedTower) refreshUpgradeModal();
+  if (remaining > 0) {
+    setTimeout(() => {
+      if (!document.body.contains(tower)) return;
+      if (Date.now() < parseInt(tower.dataset.stunUntil || '0', 10)) return;
+      tower.classList.remove('stunned');
+      if (tower === selectedTower) refreshUpgradeModal();
+    }, remaining + 20);
+  }
+}
+
 function applyRemoteTowerDestroyed(towerId) {
+  window.TeamSession?.rememberTowerDestroyed?.(towerId);
   const tower = findTowerById(towerId);
   if (!tower) return;
   if (tower === selectedTower) closeUpgradeModal();

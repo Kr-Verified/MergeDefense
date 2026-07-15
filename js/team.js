@@ -23,6 +23,7 @@
     localStateDirty: false,
     pendingRemotePatches: [],
     appliedPatchIds: new Set(),
+    destroyedTowerIds: new Set(),
 
     isActive() {
       return this.active;
@@ -167,8 +168,27 @@
     });
   };
 
+  session.reportTowerStunned = function (tower) {
+    if (!session.channel || !session.isHost || session.isSpectator || !tower?.dataset?.id) return;
+    session.channel.send({
+      type: 'broadcast',
+      event: 'tower-stunned',
+      payload: {
+        from: session.clientId,
+        id: tower.dataset.id,
+        remaining: Math.max(0, parseInt(tower.dataset.stunUntil || '0', 10) - Date.now())
+      }
+    });
+  };
+
+  session.rememberTowerDestroyed = function (towerId) {
+    if (towerId === undefined || towerId === null) return;
+    session.destroyedTowerIds.add(String(towerId));
+  };
+
   session.reportTowerDestroyed = function (towerId) {
     if (!session.channel || session.isSpectator || towerId === undefined || towerId === null) return;
+    session.rememberTowerDestroyed(towerId);
     session.channel.send({
       type: 'broadcast',
       event: 'tower-destroyed',
@@ -232,12 +252,16 @@
   }
 
   function mergeStatePatch(current, patch) {
+    const towersPatch = {
+      upsert: (patch.towers?.upsert || []).filter(tower => !session.destroyedTowerIds.has(String(tower.dataset?.id))),
+      remove: patch.towers?.remove || []
+    };
     return {
       ...current,
       saveVersion: patch.saveVersion || current.saveVersion,
       version: Math.max(current.version || 0, patch.version || 0),
       globals: { ...(current.globals || {}), ...(patch.globals || {}), coins: current.globals?.coins },
-      towers: applyCollectionPatch(current.towers, patch.towers, tower => tower.dataset?.id),
+      towers: applyCollectionPatch(current.towers, towersPatch, tower => tower.dataset?.id),
       equipment: applyCollectionPatch(current.equipment, patch.equipment, item => item.id),
       enemies: current.enemies
     };
@@ -245,13 +269,17 @@
 
   function applyFullSharedState(state) {
     if (!state || (session.syncedState && state.version <= session.sharedStateVersion)) return;
+    const filteredState = {
+      ...state,
+      towers: (state.towers || []).filter(tower => !session.destroyedTowerIds.has(String(tower.dataset?.id)))
+    };
     const localCoins = typeof coins === 'number' ? coins : null;
     const localPersonalTimeTokens = typeof personalTimeTokens === 'number' ? personalTimeTokens : 0;
     const localSkillLastUsed = typeof skillLastUsed === 'object' ? { ...skillLastUsed } : null;
     session.sharedStateVersion = state.version;
     session.applyingSharedState = true;
     try {
-      applyGameState(state, { preserveLocalUi: true });
+      applyGameState(filteredState, { preserveLocalUi: true });
       if (!session.isSpectator && localCoins !== null) coins = localCoins;
       if (!session.isSpectator) personalTimeTokens = localPersonalTimeTokens;
       if (!session.isSpectator && localSkillLastUsed) {
@@ -276,6 +304,7 @@
       return;
     }
     session.appliedPatchIds.add(message.id);
+    (message.patch.towers?.remove || []).forEach(id => session.rememberTowerDestroyed(id));
     const merged = mergeStatePatch(serializeGameState(), message.patch);
     session.applyingSharedState = true;
     try {
@@ -306,6 +335,7 @@
       }
       const state = serializeSharedState();
       const patch = buildStatePatch(session.syncedState, state);
+      (patch.towers?.remove || []).forEach(id => session.rememberTowerDestroyed(id));
       session.sharedStateVersion = state.version;
       session.syncedState = state;
       session.localStateDirty = false;
@@ -471,6 +501,32 @@
     window.location.href = `fail.html?${params.toString()}`;
   }
 
+  async function saveTeamRanking(seconds) {
+    const config = window.SUPABASE_CONFIG || {};
+    if (session.isSpectator || !config.teamRankingsTable) return;
+
+    let playerNames = [];
+    const { data: players, error: playersError } = await supabaseClient
+      .from('room_players')
+      .select('name,joined_at')
+      .eq('room_id', session.roomId)
+      .order('joined_at', { ascending: true });
+    if (!playersError) playerNames = (players || []).map(player => player.name || 'Guest');
+    if (!playerNames.length) {
+      const presenceState = session.channel ? session.channel.presenceState() : {};
+      playerNames = Object.values(presenceState).flat().map(entry => entry.name || 'Guest');
+    }
+    if (!playerNames.length) playerNames = [session.playerName || 'Guest'];
+
+    const { error } = await supabaseClient.from(config.teamRankingsTable).insert({
+      room_id: session.roomId,
+      player_names: playerNames,
+      player_count: playerNames.length,
+      survival_time: Math.max(0, Math.floor(seconds || 0))
+    });
+    if (error && error.code !== '23505') throw error;
+  }
+
   session.endGame = async function (seconds) {
     if (session.ended) return;
     session.ended = true;
@@ -481,6 +537,12 @@
         event: 'game-end',
         payload: { seconds: seconds, from: session.clientId }
       });
+    }
+
+    try {
+      await saveTeamRanking(seconds);
+    } catch (error) {
+      console.error('Failed to save team ranking', error);
     }
 
     try {
@@ -521,6 +583,7 @@
     session.isHost = !session.isSpectator && nextAuthorityId === session.clientId;
     renderTeamModeBadge();
     if (!changed) return;
+    if (typeof reconcileEnemyAuthorityMode === 'function') reconcileEnemyAuthorityMode();
     if (typeof resetGameIntervals === 'function') resetGameIntervals();
     if (session.isHost) session.reportSharedStateNow();
     else if (nextAuthorityId && session.channel) {
@@ -627,11 +690,19 @@
 
     channel.on('broadcast', { event: 'tower-health' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
+      if (payload.from !== session.authorityClientId) return;
       applyRemoteTowerHealth(payload.id, payload.hp, payload.maxHp);
+    });
+
+    channel.on('broadcast', { event: 'tower-stunned' }, ({ payload }) => {
+      if (!payload || payload.from === session.clientId) return;
+      if (payload.from !== session.authorityClientId) return;
+      applyRemoteTowerStunned(payload.id, payload.remaining);
     });
 
     channel.on('broadcast', { event: 'tower-destroyed' }, ({ payload }) => {
       if (!payload || payload.from === session.clientId) return;
+      session.rememberTowerDestroyed(payload.id);
       applyRemoteTowerDestroyed(payload.id);
     });
 

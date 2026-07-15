@@ -13,12 +13,20 @@
     <button id="start-btn" type="button">start</button>
     <button id="team-btn" type="button">팀 플레이</button>
   </div>
-  <aside id="ranking">
-    <h2>Ranking</h2>
-    <ol id="ranking-list">
-      <li class="ranking-message">랭킹 불러오는 중...</li>
-    </ol>
-  </aside>
+  <section id="rankings" aria-label="랭킹">
+    <aside class="ranking-panel">
+      <h2>개인 랭킹</h2>
+      <ol id="ranking-list">
+        <li class="ranking-message">랭킹 불러오는 중...</li>
+      </ol>
+    </aside>
+    <aside class="ranking-panel team-ranking-panel">
+      <h2>팀 랭킹</h2>
+      <ol id="team-ranking-list">
+        <li class="ranking-message">랭킹 불러오는 중...</li>
+      </ol>
+    </aside>
+  </section>
   <script src="js/audio.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/format.js"></script>

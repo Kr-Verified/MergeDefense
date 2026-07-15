@@ -292,7 +292,8 @@ http://localhost:8000
 window.SUPABASE_CONFIG = {
   url: 'https://YOUR_PROJECT.supabase.co',
   publicKey: 'YOUR_SUPABASE_PUBLISHABLE_KEY',
-  rankingsTable: 'rankings'
+  rankingsTable: 'rankings',
+  teamRankingsTable: 'team_rankings'
 };
 ```
 
@@ -306,6 +307,8 @@ create table rankings (
   created_at timestamptz not null default now()
 );
 ```
+
+팀 플레이 랭킹은 `supabase-team-rankings.sql`을 Supabase SQL Editor에서 실행해 추가합니다. 팀 기록은 게임이 끝날 때 방 ID당 한 번만 저장됩니다.
 
 Supabase를 설정하지 않으면 게임은 정상 실행되지만 랭킹 저장과 조회는 비활성화됩니다.
 

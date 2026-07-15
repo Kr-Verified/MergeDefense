@@ -18,6 +18,8 @@ function stunTower(tower, durationMs) {
   const stunUntil = Date.now() + durationMs;
   if (stunUntil > parseInt(tower.dataset.stunUntil || '0')) tower.dataset.stunUntil = `${stunUntil}`;
   tower.classList.add('stunned');
+  window.TeamSession?.reportTowerStunned?.(tower);
+  reportTeamSharedState();
 }
 
 function applyCriticalDamage(tower, damage) {
@@ -301,8 +303,7 @@ function applyRemoteEnemyStatus(enemyId, status) {
   }
   if (Number.isFinite(Number(status.slowMult))) enemy.element.dataset.slowMult = `${status.slowMult}`;
   if (status.authoritative && Number.isFinite(Number(status.left)) && Number.isFinite(Number(status.top))) {
-    enemy.element.style.left = `${Number(status.left)}px`;
-    enemy.element.style.top = `${Number(status.top)}px`;
+    setRemoteEnemyMotionTarget(enemy.element, Number(status.left), Number(status.top));
   }
   return enemy;
 }

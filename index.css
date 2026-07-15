@@ -105,9 +105,8 @@ body {
   box-shadow: 0 0 25px rgba(112, 72, 232, 0.6);
 }
 
-#ranking {
-  width: 90%;
-  max-width: 360px;
+.ranking-panel {
+  width: 360px;
   min-height: 420px;
   padding: 28px;
   border: 2px solid rgba(250, 204, 21, 0.72);
@@ -116,7 +115,7 @@ body {
   box-shadow: 0 0 20px rgba(250, 204, 21, 0.22);
 }
 
-#ranking h2 {
+.ranking-panel h2 {
   margin-bottom: 20px;
   color: #facc15;
   font-size: 30px;
@@ -124,7 +123,14 @@ body {
   text-shadow: 0 0 10px rgba(250, 204, 21, 0.38);
 }
 
-#ranking-list {
+#rankings {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+#ranking-list,
+#team-ranking-list {
   display: grid;
   gap: 10px;
   list-style: none;
@@ -149,6 +155,23 @@ body {
   white-space: nowrap;
 }
 
+.team-ranking-panel {
+  border-color: rgba(167, 139, 250, 0.78);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.24);
+}
+
+.team-ranking-panel h2 {
+  color: #c4b5fd;
+  text-shadow: 0 0 10px rgba(167, 139, 250, 0.42);
+}
+
+.team-ranking-names {
+  overflow: hidden;
+  color: #e9d5ff;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .ranking-time {
   color: #67e8f9;
 }
@@ -160,10 +183,27 @@ body {
   line-height: 1.5;
 }
 
-@media (max-width: 920px) {
+@media (max-width: 1320px) {
   body {
     height: auto;
     min-height: 100vh;
     flex-direction: column;
+  }
+
+  #rankings {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 780px) {
+  #rankings {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ranking-panel {
+    width: 90%;
+    max-width: 360px;
   }
 }
